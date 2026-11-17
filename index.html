@@ -7,8 +7,8 @@
 <title>아크릴 스탠드 · 코롯토 실물 비율 미리보기</title>
 <style>
 :root{
-  --bg:#0d0f14; --panel:#161a22; --panel2:#1d222c; --line:#2a303c; --txt:#e8eaf0; --sub:#9aa1b0;
-  --accent:#5b8cff; --accent-d:#3d6ae0;
+  --bg:#ffffff; --panel:#fafafa; --panel2:#f1f1f2; --line:#e3e3e6; --txt:#1a1a1a; --sub:#6b6b70;
+  --accent:#e5306b; --accent-d:#c41f56;
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--txt);
@@ -26,10 +26,10 @@ h1{font-size:17px;margin:4px 0 2px;text-align:center;font-weight:700}
 input[type=range]{width:140px;accent-color:var(--accent)}
 input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
 .btn{background:var(--panel2);border:1px solid var(--line);color:var(--txt);font:inherit;font-size:13px;padding:7px 12px;border-radius:8px;cursor:pointer}
-.btn:hover{border-color:#3b4354}
+.btn:hover{border-color:#b9b9c0}
 .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
 .btn.sm{padding:4px 8px;font-size:12px}
-.btn.danger:hover{border-color:#e5484d;color:#ff8b8f}
+.btn.danger:hover{border-color:#d63a4a;color:#c42a3a}
 
 /* stage */
 #stageWrap{overflow-x:auto;overflow-y:hidden;border-radius:12px;background:#cfd3da;border:1px solid var(--line);position:relative}
@@ -65,7 +65,7 @@ input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
 /* editor */
 h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;justify-content:space-between}
 #list{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
 .card.sel{border-color:var(--accent)}
 .row{display:flex;gap:8px;align-items:center;margin-top:8px}
 .card input[type=text]{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:7px;padding:7px 9px;font:inherit;font-size:14px}
@@ -78,7 +78,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
 .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .tierln{font-size:12px;color:var(--sub);margin-top:8px}
 .tierln b{color:var(--txt);font-weight:600}
-.tierln.over b{color:#ff8b8f}
+.tierln.over b{color:#c42a3a}
 
 /* layout: 미리보기 왼쪽, 굿즈 목록 오른쪽 스크롤 */
 .layout{display:block}
@@ -110,23 +110,23 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
 .otbl th.n{text-align:right;white-space:nowrap}
 .otbl tr.tot td{border-bottom:0;font-weight:700}
 .otbl .names{color:var(--sub);font-size:12px;margin-top:2px;word-break:keep-all}
-.otbl .warn{color:#ff8b8f;font-size:12px;margin-top:2px}
+.otbl .warn{color:#c42a3a;font-size:12px;margin-top:2px}
 .tiers{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px;font-size:12.5px;color:var(--sub)}
 .tiers .t{display:flex;align-items:center;gap:4px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px}
 .tiers input{width:58px;background:var(--bg);border:1px solid var(--line);color:var(--txt);border-radius:6px;padding:4px 5px;font:inherit;font-size:13px}
 .tiers input.p{width:68px}
-.tiers small{color:#e0b450;font-size:11px}
+.tiers small{color:#a86a12;font-size:11px}
 .tiers .rm{background:none;border:0;color:var(--sub);cursor:pointer;font-size:14px;padding:0 2px}
 
 /* modal */
-#modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:10;padding:16px}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:10;padding:16px}
 #modal.open{display:flex}
 .dlg{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;max-width:560px;width:100%;max-height:92vh;overflow:auto}
 .dlg p{font-size:13px;color:var(--sub);margin:4px 0 12px;line-height:1.5}
 .cardbox{height:210px;display:flex;align-items:center;justify-content:center;background:var(--panel2);border-radius:10px;margin-bottom:12px;overflow:hidden}
 .cc{background:linear-gradient(135deg,#7aa2ff,#b07bff);border-radius:8px;display:flex;align-items:flex-end;justify-content:flex-end;
-  padding:6px 10px;font-size:11px;color:rgba(255,255,255,.9);box-shadow:0 4px 14px rgba(0,0,0,.4)}
-.drop{position:fixed;inset:0;background:rgba(91,140,255,.18);border:3px dashed var(--accent);display:none;align-items:center;justify-content:center;font-size:20px;z-index:9;pointer-events:none}
+  padding:6px 10px;font-size:11px;color:rgba(255,255,255,.9);box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.drop{position:fixed;inset:0;background:rgba(229,48,107,.1);border:3px dashed var(--accent);display:none;align-items:center;justify-content:center;font-size:20px;z-index:9;pointer-events:none}
 .drop.on{display:flex}
 @media(max-width:560px){input[type=range]{width:110px}.seg button{padding:7px 11px}.otbl{font-size:12.5px}.otbl th,.otbl td{padding:6px 4px}}
 </style>
