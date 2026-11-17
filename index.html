@@ -408,23 +408,29 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     var bhOf=function(i){return (real&&isSt(i))?(i.bt||3)/10:0}; /* 받침 두께 (cm) */
     var bwOf=function(i){return (real&&isSt(i))?Math.max(AW(i),i.bwAuto?AW(i):i.bw):AW(i)};
     var foot=function(i){return Math.max(AW(i),bwOf(i))};
-    var totalCm=list.reduce(function(a,i){return a+foot(i)},0)+g*(list.length-1);
+    var PER_ROW=6; /* 나란히 보기: 6개마다 줄바꿈 */
+    var rows=[];for(var ri=0;ri<list.length;ri+=PER_ROW)rows.push(list.slice(ri,ri+PER_ROW));
+    var rowW=function(r){return r.reduce(function(a,i){return a+foot(i)},0)+g*(r.length-1)};
+    var rowH=function(r){return Math.max.apply(null,r.map(function(i){return AH(i)+bhOf(i)}))};
+    var totalCm=Math.max.apply(null,rows.map(rowW));
     var fullCm=totalCm+PAD*2;
-    var maxH=Math.max.apply(null,list.map(function(i){return AH(i)+bhOf(i)}));
+    var maxH=Math.max.apply(null,rows.map(rowH));
     var availW=wrap.clientWidth||600;
     var s;
     if(state.fit){
       s=Math.max(2,Math.min(availW/fullCm,(coarse?340:520)/(maxH+TOP)));
     }else s=state.px;
     var stageW=Math.max(availW,fullCm*s);
-    var floorY=Math.round((maxH+TOP)*s);
     var floorH=LABEL_PX+(state.ruler?RULER_PX:0);
-    stage.style.width=stageW+'px';stage.style.height=(floorY+floorH)+'px';
-    var x0=(stageW-totalCm*s)/2;
-    var html='<div class="wall" style="height:'+floorY+'px"></div><div class="floor" style="top:'+floorY+'px"></div>';
-    html+='<div class="tag">실제 비율'+(real?' · 스탠드 받침은 3/5mm 두께 반영':'')+'</div>';
+    var tagHtml='<div class="tag">실제 비율'+(real?' · 스탠드 받침은 3/5mm 두께 반영':'')+(rows.length>1?' · '+PER_ROW+'개씩 줄바꿈':'')+'</div>';
+    var html='',rowY=0;
+    rows.forEach(function(row){
+    var rw=rowW(row);
+    var floorY=rowY+Math.round((rowH(row)+TOP)*s);
+    html+='<div class="wall" style="top:'+rowY+'px;height:'+(floorY-rowY)+'px"></div><div class="floor" style="top:'+floorY+'px;bottom:auto;height:'+floorH+'px"></div>';
+    var x0=(stageW-rw*s)/2;
     var x=x0;
-    list.forEach(function(it){
+    row.forEach(function(it){
       var st=isSt(it);
       var fw=foot(it)*s, iw=AW(it)*s, ih=AH(it)*s;
       var bw=bwOf(it)*s, bh=bhOf(it)*s;
@@ -454,14 +460,17 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       html+='<div class="lab" style="left:'+(x+fw/2-lw/2).toFixed(1)+'px;top:'+(floorY+10)+'px;width:'+lw.toFixed(1)+'px"><b>'+fmt(it.w)+' × '+fmt(it.h)+' · 가세'+gsOf(it)+'</b><span>'+(st?'아크릴 스탠드 · 받침 '+(it.bt||3)+'mm':'코롯토')+' · '+esc(it.name)+'</span>'+(E(it)>0?'<span>아크릴 '+fmt(AW(it))+' × '+fmt(AH(it))+' (가세'+Math.round(AW(it)*10+AH(it)*10)+')</span>':'')+'<span>디자인 '+fmt(AW(it)-2*M(it))+' × '+fmt(AH(it)-2*M(it))+' · 여백 '+(Math.round(M(it)*100)/10)+'mm</span>'+'</div>';
       x+=fw+g*s;
     });
-    if(state.ruler){
-      var ry=floorY+LABEL_PX;
-      var step=s>=30?1:(s>=14?2:5);
-      html+='<div class="ruler" style="left:'+x0.toFixed(1)+'px;top:'+ry+'px;width:'+(totalCm*s).toFixed(1)+'px;--cm:'+s.toFixed(3)+'px">';
-      for(var c=0;c<=totalCm;c+=step){html+='<i style="left:'+(c*s).toFixed(1)+'px">'+c+'</i>'}
-      html+='</div>';
-    }
-    stage.innerHTML=html;
+      if(state.ruler){
+        var ry=floorY+LABEL_PX;
+        var step=s>=30?1:(s>=14?2:5);
+        html+='<div class="ruler" style="left:'+x0.toFixed(1)+'px;top:'+ry+'px;width:'+(rw*s).toFixed(1)+'px;--cm:'+s.toFixed(3)+'px">';
+        for(var c=0;c<=rw;c+=step){html+='<i style="left:'+(c*s).toFixed(1)+'px">'+c+'</i>'}
+        html+='</div>';
+      }
+    rowY=floorY+floorH;
+    });
+    stage.style.width=stageW+'px';stage.style.height=rowY+'px';
+    stage.innerHTML=html+tagHtml;
     var pct=Math.round(s/state.px*100);
     $('#info').textContent=state.fit
       ? '화면 맞춤 · 실제 크기의 약 '+pct+'% (물건끼리의 비율은 정확해요) · 실제 크기로 보려면 "실제 크기"를 누르세요'
