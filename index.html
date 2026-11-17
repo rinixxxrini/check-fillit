@@ -321,7 +321,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       if(d.tiers&&d.tiers.length)state.tiers=cpT(d.tiers);
       if(d.tiersS&&d.tiersS.length)state.tiersS=cpT(d.tiersS);
     }
-    state.sel=state.items.length?state.items[0].id:null;
+    state.sel=null; /* 처음엔 아무것도 선택하지 않음 */
   }
 
   /* 칼선(여백) 윤곽: 거리변환으로 정확한 원형 확장 + 오목한 부분 매끈하게 메우기 */
@@ -459,7 +459,8 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   /* stage */
   function renderStage(){
     var wrap=$('#stageWrap'),stage=$('#stage');
-    var list=state.mode==='one'?state.items.filter(function(i){return i.id===state.sel}):state.items;
+    var cur=state.sel!=null&&get(state.sel)?state.sel:(state.items[0]&&state.items[0].id);
+    var list=state.mode==='one'?state.items.filter(function(i){return i.id===cur}):state.items;
     if(!list.length){stage.style.height='220px';stage.innerHTML='<div class="empty">굿즈를 추가해 주세요<br><small>"+ 사이즈 추가" 또는 "+ 이미지로 추가"를 누르거나, 이미지를 화면에 끌어다 놓으세요</small></div>';$('#info').textContent='';return}
     var real=state.real,g=state.mode==='one'?0:state.gap;
     var isSt=function(i){return i.type!=='corotto'};
@@ -690,6 +691,17 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     if(cr.top<sr.top+top)side.scrollTop+=cr.top-sr.top-top-6;
     else if(cr.bottom>sr.bottom)side.scrollTop+=Math.min(cr.bottom-sr.bottom+6,cr.top-sr.top-top-6);
   }
+  function setSel(id){
+    state.sel=id;renderControls();
+    document.querySelectorAll('.card').forEach(function(c){c.classList.toggle('sel',+c.dataset.id===id)});
+    renderStage();
+  }
+  document.addEventListener('keydown',function(e){
+    if(e.key!=='Escape'||state.sel==null)return;
+    if($('#modal').classList.contains('open'))return;
+    var a=document.activeElement;if(a&&a.blur&&a.closest&&a.closest('#list'))a.blur();
+    setSel(null);
+  });
   /* events */
   $('#modeSeg').addEventListener('click',function(e){var m=e.target.dataset.m;if(!m)return;state.mode=m;renderAll()});
   $('#fitSeg').addEventListener('click',function(e){var f=e.target.dataset.f;if(!f)return;state.fit=(f==='fit');renderControls();renderStage();save()});
@@ -700,8 +712,9 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   $('#mcIn').addEventListener('input',function(e){var v=parseFloat(e.target.value);if(!(v>=0))return;state.mc=Math.min(v,20);syncTiers();renderStage();renderOrder();save()});
   $('#gap').addEventListener('input',function(e){state.gap=parseFloat(e.target.value)||0;$('#gapVal').textContent=fmt(state.gap)+' cm';renderStage();save()});
   function step(d){
+    if(!state.items.length)return;
     var i=state.items.findIndex(function(x){return x.id===state.sel});
-    if(i<0||!state.items.length)return;
+    if(i<0){state.sel=state.items[d>0?0:state.items.length-1].id;renderAll();showSel();return}
     state.sel=state.items[(i+d+state.items.length)%state.items.length].id;renderAll();showSel();
   }
   $('#prev').addEventListener('click',function(){step(-1)});
@@ -720,8 +733,11 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   });
 
   $('#stage').addEventListener('click',function(e){
-    var t=e.target.closest('.item');if(!t)return;
-    state.sel=+t.dataset.id;renderControls();renderEditor();renderStage();showSel();
+    var t=e.target.closest('.item');
+    if(!t){if(state.mode==='side'&&state.sel!=null)setSel(null);return} /* 빈 곳 누르면 선택 해제 */
+    var id=+t.dataset.id;
+    if(state.mode==='side'&&state.sel===id){setSel(null);return} /* 선택된 것 다시 누르면 해제 */
+    setSel(id);showSel();
   });
 
   var list=$('#list');
@@ -765,8 +781,8 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     var id=+card.dataset.id,act=e.target.dataset.act;
     if(!act){
       if(e.target.tagName==='INPUT')return;
-      if(state.sel!==id){state.sel=id;renderControls();
-        document.querySelectorAll('.card').forEach(function(c){c.classList.toggle('sel',c.dataset.id==id)});renderStage();showSel()}
+      if(state.sel!==id){setSel(id);showSel()}
+      else if(e.target.closest('.chd'))setSel(null); /* 펼친 카드의 머리줄을 다시 누르면 접기 */
       return;
     }
     var idx=state.items.findIndex(function(x){return x.id===id}),it=state.items[idx];
@@ -776,7 +792,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     if(act==='bt3')it.bt=3;
     if(act==='bt5')it.bt=5;
     if(act==='dup'){var c=mk(it);c.name=it.name+' 복사';c.bwAuto=it.bwAuto;c.img=it.img;c.im=it.im;c.imgKey=it.imgKey;c.imgId=it.imgId;c.nw=it.nw;c.nh=it.nh;c.lock=it.lock;c.qty=it.qty;state.items.splice(idx+1,0,c);state.sel=c.id}
-    if(act==='del'){state.items.splice(idx,1);if(state.sel===id)state.sel=state.items.length?state.items[Math.max(0,idx-1)].id:null}
+    if(act==='del'){state.items.splice(idx,1);if(state.sel===id)state.sel=null}
     if(act==='left'&&idx>0){state.items.splice(idx,1);state.items.splice(idx-1,0,it)}
     if(act==='right'&&idx<state.items.length-1){state.items.splice(idx,1);state.items.splice(idx+1,0,it)}
     renderAll();
