@@ -608,7 +608,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     if(f==='name'){it.name=t.value;var nq=qtyFromName(it.name);if(nq&&nq!==it.qty){it.qty=nq;syncCard(it,'name')}}
     else if(f==='qty'){var q=parseInt(t.value,10);if(!(q>=0))return;it.qty=Math.min(q,99999)}
     else{
-      var v=parseFloat(t.value);if(!(v>0))return;v=Math.min(v,200);
+      var v=parseFloat(t.value);if(!(v>0))return;v=Math.min(v,f==="gs"?4000:200); /* 가로·세로·받침은 cm(최대 200cm), 가세는 mm(최대 4000mm) */
       if(f==='w'){it.w=v;if(it.bwAuto)it.bw=v;if(it.lock&&it.nw)it.h=hFromW(it,v)}
       else if(f==='h'){it.h=v;if(it.lock&&it.nw){it.w=wFromH(it,v);if(it.bwAuto)it.bw=it.w}}
       else if(f==='bw'){it.bw=v;it.bwAuto=false}
