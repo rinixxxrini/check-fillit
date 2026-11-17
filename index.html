@@ -687,16 +687,36 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   function renderAll(){renderControls();renderEditor();renderStage();renderOrder();save()}
 
   /* image */
+  /* 그림 둘레의 투명한 빈 공간을 잘라 낸다 → 발끝이 그림 아래 끝에 오도록 (모든 굿즈 바닥선을 같게)
+     원본 파일은 그대로 저장하고, 화면에 쓸 때만 잘라서 쓴다 */
+  function trimImg(im,cb){
+    var W=im.naturalWidth,H=im.naturalHeight;
+    try{
+      var k=Math.min(1,1000/Math.max(W,H)),sw=Math.max(1,Math.round(W*k)),sh=Math.max(1,Math.round(H*k));
+      var c=document.createElement('canvas');c.width=sw;c.height=sh;
+      var g=c.getContext('2d');g.drawImage(im,0,0,sw,sh);
+      var d=g.getImageData(0,0,sw,sh).data,x0=sw,y0=sh,x1=-1,y1=-1,x,y;
+      for(y=0;y<sh;y++)for(x=0;x<sw;x++)if(d[(y*sw+x)*4+3]>40){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
+      if(x1<0)return cb(im,W,H,null); /* 전부 투명 */
+      var L=Math.max(0,Math.floor((x0-1)/k)),T=Math.max(0,Math.floor((y0-1)/k)),R=Math.min(W,Math.ceil((x1+2)/k)),B=Math.min(H,Math.ceil((y1+2)/k));
+      if(L<=1&&T<=1&&R>=W-1&&B>=H-1)return cb(im,W,H,null); /* 잘라 낼 게 없음 (JPG 등) */
+      var cw=R-L,ch=B-T,o=document.createElement('canvas');o.width=cw;o.height=ch;
+      o.getContext('2d').drawImage(im,L,T,cw,ch,0,0,cw,ch);
+      o.toBlob(function(bl){cb(o,cw,ch,bl?URL.createObjectURL(bl):null)},'image/png');
+    }catch(e){cb(im,W,H,null)}
+  }
   function setImage(it,file,done,restore){
     var url=URL.createObjectURL(file),im=new Image();
     im.onload=function(){
-      it.img=url;it.im=im;it.imgKey=++imgSeq;it.nw=im.naturalWidth;it.nh=im.naturalHeight;
-      if(!restore){
-        it.imgId=newImgId();
-        imgPut(it.imgId,file).then(function(){save();imgGC()});
-        if(it.lock){it.h=hFromW(it,it.w)}
-      }
-      if(done)done();
+      trimImg(im,function(src,w,h,turl){
+        it.img=turl||url;it.im=src;it.imgKey=++imgSeq;it.nw=w;it.nh=h;
+        if(!restore){
+          it.imgId=newImgId();
+          imgPut(it.imgId,file).then(function(){save();imgGC()});
+          if(it.lock){it.h=hFromW(it,it.w)}
+        }
+        if(done)done();
+      });
     };
     im.onerror=function(){if(done)done()};
     im.src=url;
