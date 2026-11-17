@@ -38,7 +38,14 @@ input[type=checkbox]{accent-color:var(--accent-d);width:16px;height:16px}
 .wall{position:absolute;left:0;right:0;top:0;background:linear-gradient(#d7dae0,#c4c8d0)}
 .floor{position:absolute;left:0;right:0;bottom:0;background:#d5d2ca;border-top:1px solid #b9b5ab}
 .tag{position:absolute;left:10px;top:8px;font-size:12px;color:#4b5160;pointer-events:none;position:sticky}
-.item{position:absolute;cursor:pointer}
+.item{position:absolute;cursor:grab}
+.item.sel{touch-action:none} /* 터치: 선택한 그림만 끌어서 옮기기 (나머지는 화면 스크롤) */
+.item.dragging,.card.dragging{opacity:.8;z-index:20;cursor:grabbing;transition:none}
+.item.dropL::before,.item.dropR::after{content:'';position:absolute;top:0;bottom:0;width:4px;border-radius:2px;background:var(--accent-d)}
+.item.dropL::before{left:-8px}.item.dropR::after{right:-8px}
+.card.dropB{box-shadow:0 -3px 0 var(--accent-d)}.card.dropA{box-shadow:0 3px 0 var(--accent-d)}
+.grip{flex:none;color:#a0a0a8;font-size:15px;line-height:1;padding:8px 2px;cursor:grab;touch-action:none;user-select:none}
+.chd{user-select:none}
 .item.sel{outline:2px dashed var(--accent-d);outline-offset:6px;border-radius:2px}
 .cut{position:absolute;border:1px dashed rgba(60,66,80,.55);border-radius:3px}
 .img{position:absolute;display:flex;align-items:flex-end;justify-content:center}
@@ -560,8 +567,9 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     var V=vis();
     box.innerHTML=V.map(function(it,idx){
       return '<div class="card'+(it.id===state.sel?' sel':'')+'" data-id="'+it.id+'">'
-       +'<div class="chd" title="눌러서 편집">'
-         +'<div class="cth">'+(it.img?'<img src="'+it.img+'" alt="">':'')+'</div>'
+       +'<div class="chd" title="눌러서 편집 · 끌어서 순서 바꾸기">'
+         +'<span class="grip" title="끌어서 순서 바꾸기">⠿</span>'
+         +'<div class="cth">'+(it.img?'<img src="'+it.img+'" alt="" draggable="false">':'')+'</div>'
          +'<div class="cmeta"><div class="cnm">'+(esc(it.name)||'(이름 없음)')+'</div><div class="csum" data-sum>'+sumHtml(it)+'</div></div>'
          +'<span class="chev">▾</span>'
        +'</div>'
@@ -767,6 +775,54 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     var f=e.target.files[0],it=get(repId);e.target.value='';
     if(f&&it)setImage(it,f,function(){renderAll()});
   });
+
+  /* 끌어서 순서 바꾸기 (미리보기 그림 / 목록 줄). 마우스는 바로, 터치는 선택한 그림·손잡이(⠿)에서만 */
+  var justDragged=false;
+  function dragSort(root,sel,o){
+    root.addEventListener('pointerdown',function(e){
+      if(e.button!==0)return;
+      var el=e.target.closest(sel);if(!el||!root.contains(el))return;
+      if(o.handle&&!e.target.closest(o.handle))return;
+      if(e.target.closest('input,textarea,select,button'))return;
+      if(e.pointerType!=='mouse'&&!o.touchOk(el,e))return;
+      var id=+el.dataset.id,sx=e.clientX,sy=e.clientY,moved=false,tgt=null,after=false;
+      function clear(){root.querySelectorAll('.dropL,.dropR,.dropB,.dropA').forEach(function(x){x.classList.remove('dropL','dropR','dropB','dropA')})}
+      function move(ev){
+        var dx=ev.clientX-sx,dy=ev.clientY-sy;
+        if(!moved){if(Math.abs(dx)+Math.abs(dy)<6)return;moved=true;el.classList.add('dragging')}
+        ev.preventDefault();
+        el.style.transform='translate('+dx+'px,'+dy+'px)';
+        var best=null,bd=1e9;
+        root.querySelectorAll(sel).forEach(function(x){
+          if(x===el)return;var r=x.getBoundingClientRect();
+          var cx=Math.max(r.left,Math.min(ev.clientX,r.right)),cy=Math.max(r.top,Math.min(ev.clientY,r.bottom));
+          var d=Math.hypot(ev.clientX-cx,ev.clientY-cy);if(d<bd){bd=d;best=x}
+        });
+        clear();tgt=null;
+        if(best&&bd<80){
+          var r=best.getBoundingClientRect();tgt=+best.dataset.id;
+          after=o.horiz?ev.clientX>r.left+r.width/2:ev.clientY>r.top+r.height/2;
+          best.classList.add(o.horiz?(after?'dropR':'dropL'):(after?'dropA':'dropB'));
+        }
+      }
+      function up(){
+        window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);
+        el.classList.remove('dragging');el.style.transform='';clear();
+        if(!moved)return;
+        justDragged=true;setTimeout(function(){justDragged=false},0);
+        if(tgt==null||tgt===id)return;
+        var it=get(id);if(!it)return;
+        state.items.splice(state.items.indexOf(it),1);
+        var ti=state.items.indexOf(get(tgt));if(ti<0)ti=state.items.length-1;
+        state.items.splice(ti+(after?1:0),0,it);
+        renderAll();
+      }
+      window.addEventListener('pointermove',move,{passive:false});window.addEventListener('pointerup',up);window.addEventListener('pointercancel',up);
+    });
+    root.addEventListener('click',function(e){if(justDragged){e.stopPropagation();e.preventDefault();justDragged=false}},true);
+  }
+  dragSort($('#stage'),'.item',{horiz:true,touchOk:function(el){return el.classList.contains('sel')}});
+  dragSort($('#list'),'.card',{handle:'.chd',horiz:false,touchOk:function(el,e){return !!e.target.closest('.grip')}});
 
   $('#stage').addEventListener('click',function(e){
     var t=e.target.closest('.item');
