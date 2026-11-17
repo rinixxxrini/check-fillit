@@ -75,6 +75,25 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
 .x{color:var(--sub);padding-top:16px}
 .lk{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:6px;margin-top:8px}
 .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.tierln{font-size:12px;color:var(--sub);margin-top:8px}
+.tierln b{color:var(--txt);font-weight:600}
+.tierln.over b{color:#ff8b8f}
+
+/* order summary */
+#order{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:4px}
+.otbl{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums}
+.otbl th{font-weight:600;color:var(--sub);font-size:12px;text-align:left;padding:6px 6px;border-bottom:1px solid var(--line)}
+.otbl td{padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+.otbl td.n{text-align:right;white-space:nowrap}
+.otbl th.n{text-align:right;white-space:nowrap}
+.otbl tr.tot td{border-bottom:0;font-weight:700}
+.otbl .names{color:var(--sub);font-size:12px;margin-top:2px;word-break:keep-all}
+.otbl .warn{color:#ff8b8f;font-size:12px;margin-top:2px}
+.tiers{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px;font-size:12.5px;color:var(--sub)}
+.tiers .t{display:flex;align-items:center;gap:4px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px}
+.tiers input{width:58px;background:var(--bg);border:1px solid var(--line);color:var(--txt);border-radius:6px;padding:4px 5px;font:inherit;font-size:13px}
+.tiers input.p{width:68px}
+.tiers .rm{background:none;border:0;color:var(--sub);cursor:pointer;font-size:14px;padding:0 2px}
 
 /* modal */
 #modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:10;padding:16px}
@@ -86,7 +105,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   padding:6px 10px;font-size:11px;color:rgba(255,255,255,.9);box-shadow:0 4px 14px rgba(0,0,0,.4)}
 .drop{position:fixed;inset:0;background:rgba(91,140,255,.18);border:3px dashed var(--accent);display:none;align-items:center;justify-content:center;font-size:20px;z-index:9;pointer-events:none}
 .drop.on{display:flex}
-@media(max-width:560px){input[type=range]{width:110px}.seg button{padding:7px 11px}}
+@media(max-width:560px){input[type=range]{width:110px}.seg button{padding:7px 11px}.otbl{font-size:12.5px}.otbl th,.otbl td{padding:6px 4px}}
 </style>
 </head>
 <body>
@@ -129,6 +148,12 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
 <div id="list"></div>
 <p class="info" style="margin-top:14px">이미지는 내 브라우저에서만 쓰이고 어디에도 업로드되지 않아요. 사이즈 값과 이미지는 이 브라우저에 저장돼서 새로고침하거나 다시 들어와도 그대로 남아요(다른 기기·브라우저와는 공유되지 않아요).<br>기본은 입력한 가로·세로·가세가 사방 여백까지 포함한 최종 아크릴 크기예요(업체 안내처럼 디자인 크기 = 아크릴 크기 − 사방 여백, 여백은 스탠드 2mm·코롯토 3mm). 그림 크기만 입력하고 여백을 바깥에 더하고 싶다면 "입력 크기에 여백 포함"을 꺼 주세요. 투명 배경 PNG를 올리면 그 여백이 실제 아크릴처럼 흰 테두리로 보여요. 이미지를 화면에 끌어다 놓아도 추가돼요.</p>
 
+<h2>
+  <span>발주 수량 합계 (가세 구간별)</span>
+  <span><button class="btn sm" id="btnCopy">복사</button></span>
+</h2>
+<div id="order"></div>
+
 <input type="file" id="fileAdd" accept="image/*" multiple hidden>
 <input type="file" id="fileRep" accept="image/*" hidden>
 <div class="drop" id="drop">이미지를 놓아서 추가</div>
@@ -157,7 +182,9 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   var DEF_PX=coarse?63:37.8;
   var BASE_H=1.0, OVER=0.35, PAD=1.5, TOP=1.0, LABEL_PX=92, RULER_PX=26;
   var uid=1,imgSeq=0;
-  var state={items:[],mode:'side',real:true,gap:0.5,fit:true,ruler:false,sel:null,px:DEF_PX,ms:2,mc:3,mInc:true};
+  /* 업체 옵션: [가로+세로] N mm 이하 구간과 단가(원) — 화면에서 수정 가능 */
+  var DEF_TIERS=[[40,2500],[50,2800],[60,2900],[70,3100],[80,3300],[90,3500],[100,3700],[110,3900],[120,4100],[140,4400],[150,4600],[180,5000]].map(function(t){return {mm:t[0],p:t[1]}});
+  var state={items:[],mode:'side',real:true,gap:0.5,fit:true,ruler:false,sel:null,px:DEF_PX,ms:2,mc:3,mInc:true,tiers:DEF_TIERS.map(function(t){return {mm:t.mm,p:t.p}})};
   function M(i){return Math.max(0,(i&&i.type==='corotto'?state.mc:state.ms)||0)/10} /* 사방 여백 (cm): 스탠드 2mm / 코롯토 3mm */
   /* mInc=false(기본): 입력 크기 = 그림(발주 파일) 크기, 업체가 바깥으로 여백 추가 / true: 입력 크기에 여백 포함 */
   function E(i){return state.mInc?0:M(i)}   /* 입력 크기 바깥으로 더해지는 여백 */
@@ -173,8 +200,15 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
   function mk(o){
     var w=o.w||7.5;
-    return {id:uid++,name:o.name||'굿즈 '+uid,type:o.type==='corotto'?'corotto':'stand',bt:o.bt===5?5:3,w:w,h:o.h||8.5,bw:o.bw||w,bwAuto:o.bwAuto!==false,lock:o.lock!==false,img:o.img||null,imgId:o.imgId||null,nw:o.nw||0,nh:o.nh||0};
+    return {id:uid++,name:o.name||'굿즈 '+uid,type:o.type==='corotto'?'corotto':'stand',bt:o.bt===5?5:3,w:w,h:o.h||8.5,bw:o.bw||w,bwAuto:o.bwAuto!==false,lock:o.lock!==false,img:o.img||null,imgId:o.imgId||null,nw:o.nw||0,nh:o.nh||0,qty:o.qty>=0?Math.floor(o.qty):(qtyFromName(o.name)||1)};
   }
+  /* 이름에 '수량 10' 이 있으면 수량으로 읽는다 */
+  function qtyFromName(n){var m=/수량\s*[:=]?\s*(\d+)/.exec(n||'');return m?parseInt(m[1],10):0}
+  /* 발주 구간: 실제 아크릴 가세(mm)가 들어가는 가장 작은 'N mm 이하' 구간 */
+  function agsOf(it){return Math.round(AW(it)*10+AH(it)*10)}
+  function sortedTiers(){return state.tiers.filter(function(t){return t.mm>0}).slice().sort(function(a,b){return a.mm-b.mm})}
+  function tierOf(it){var g=agsOf(it),ts=sortedTiers();for(var i=0;i<ts.length;i++)if(g<=ts[i].mm)return ts[i];return null}
+  function won(n){return Math.round(n).toLocaleString('ko-KR')+'원'}
   function get(id){for(var i=0;i<state.items.length;i++)if(state.items[i].id==id)return state.items[i]}
 
   /* 이미지 저장소 (IndexedDB) : 원본 파일을 imgId 키로 보관 */
@@ -214,8 +248,8 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   function save(){
     try{
       localStorage.setItem(KEY,JSON.stringify({
-        items:state.items.map(function(i){return {name:i.name,type:i.type,bt:i.bt,w:i.w,h:i.h,bw:i.bw,bwAuto:i.bwAuto,lock:i.lock,imgId:i.imgId||null}}),
-        mode:state.mode,real:state.real,gap:state.gap,fit:state.fit,ruler:state.ruler,px:state.px,ms:state.ms,mc:state.mc,mInc:state.mInc
+        items:state.items.map(function(i){return {name:i.name,type:i.type,bt:i.bt,w:i.w,h:i.h,bw:i.bw,bwAuto:i.bwAuto,lock:i.lock,imgId:i.imgId||null,qty:i.qty}}),
+        mode:state.mode,real:state.real,gap:state.gap,fit:state.fit,ruler:state.ruler,px:state.px,ms:state.ms,mc:state.mc,mInc:state.mInc,tiers:state.tiers
       }));
     }catch(e){}
   }
@@ -226,6 +260,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       state.items=d.items.map(function(i){i.lock=false;return mk(i)});
       state.items.forEach(function(i,k){i.lock=d.items[k].lock!==false});
       ['mode','real','gap','fit','ruler','px','ms','mc','mInc'].forEach(function(k){if(d[k]!==undefined)state[k]=d[k]});
+      if(d.tiers&&d.tiers.length)state.tiers=d.tiers.map(function(t){return {mm:+t.mm||0,p:+t.p||0}});
     }else{
       state.items=[mk({name:'예시 A',w:9.9,h:8.4}),mk({name:'예시 B',type:'corotto',w:7.5,h:8.5}),mk({name:'예시 C',bt:5,w:7.5,h:8.5})];
     }
@@ -405,9 +440,11 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
        +'</div>'
        +'<div class="row">'
          +'<div class="f"><small>가세 합 (mm)</small><input type="number" inputmode="numeric" step="1" min="2" data-f="gs" value="'+gsOf(it)+'"></div>'
+         +'<div class="f"><small>수량 (개)</small><input type="number" inputmode="numeric" step="1" min="0" data-f="qty" value="'+it.qty+'"></div>'
          +(it.type==='corotto'?'':'<div class="f"><small>받침 가로 (cm)</small><input type="number" inputmode="decimal" step="0.1" min="0.1" data-f="bw" value="'+fmt(it.bw)+'"></div>')
        +'</div>'
        +(it.type==='corotto'?'':'<div class="row"><div class="f"><small>받침 두께</small><div class="seg"><button data-act="bt3" class="'+(it.bt!==5?'on':'')+'">3mm 얇은 것</button><button data-act="bt5" class="'+(it.bt===5?'on':'')+'">5mm 두꺼운 것</button></div></div></div>')
+       +'<div class="tierln" data-tier>'+tierHtml(it)+'</div>'
        +'<label class="lk"><input type="checkbox" data-f="lock" '+(it.lock?'checked':'')+'> 이미지 비율 유지'+(it.nw?'':' (이미지 올리면 적용)')+'</label>'
        +'<div class="acts">'
          +'<button class="btn sm" data-act="img">'+(it.img?'이미지 교체':'이미지 올리기')+'</button>'
@@ -418,6 +455,17 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
        +'</div></div>';
     }).join('');
   }
+  function tierHtml(it){
+    var t=tierOf(it);
+    return t?'발주 구간: <b>'+t.mm+'mm 이하</b>'+(t.p?' · '+won(t.p):'')+' (아크릴 가세 '+agsOf(it)+'mm)'
+            :'<b>구간 초과</b> · 아크릴 가세 '+agsOf(it)+'mm (아래 구간 설정 확인)';
+  }
+  function syncTiers(){
+    document.querySelectorAll('.card').forEach(function(c){
+      var it=get(c.dataset.id),el=c.querySelector('[data-tier]');if(!it||!el)return;
+      el.innerHTML=tierHtml(it);el.classList.toggle('over',!tierOf(it));
+    });
+  }
   function syncCard(it,except){
     var c=document.querySelector('.card[data-id="'+it.id+'"]');if(!c)return;
     ['w','h','bw','gs'].forEach(function(f){
@@ -425,6 +473,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       var el=c.querySelector('[data-f="'+f+'"]');
       if(el)el.value=(f==='gs')?gsOf(it):fmt(it[f]);
     });
+    var q=c.querySelector('[data-f="qty"]');if(q&&except!=='qty'&&+q.value!==it.qty)q.value=it.qty;
   }
   function renderControls(){
     document.querySelectorAll('#modeSeg button').forEach(function(b){b.classList.toggle('on',b.dataset.m===state.mode)});
@@ -434,7 +483,48 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     $('#gapLbl').style.display=state.mode==='one'?'none':'flex';
     $('#navOne').style.display=state.mode==='one'?'inline':'none';
   }
-  function renderAll(){renderControls();renderEditor();renderStage();save()}
+  /* 발주 수량 합계: 종류 + 가세 구간별로 묶어서 수량을 더한다 */
+  function orderGroups(){
+    var mixed=state.items.some(function(i){return i.type==='corotto'})&&state.items.some(function(i){return i.type!=='corotto'});
+    var g={},keys=[];
+    state.items.forEach(function(it){
+      var t=tierOf(it),tn=it.type==='corotto'?'코롯토':'아크릴 스탠드';
+      var k=(mixed?tn:'')+'|'+(t?t.mm:'over');
+      if(!g[k]){g[k]={label:(mixed?tn+' · ':'')+(t?'[가로+세로] '+t.mm+'mm 이하':'구간 초과'),t:t,qty:0,items:[],sort:(it.type==='corotto'?1e6:0)+(t?t.mm:9e5)};keys.push(k)}
+      g[k].qty+=it.qty;g[k].items.push(it);
+    });
+    return keys.map(function(k){return g[k]}).sort(function(a,b){return a.sort-b.sort});
+  }
+  var tierOpen=false;
+  function renderOrder(){
+    var box=$('#order'),gs=orderGroups();
+    var h='';
+    if(!gs.length)h+='<div class="info" style="margin:0">굿즈를 추가하면 여기에 구간별 합계가 나와요.</div>';
+    else{
+      var tq=0,tp=0,allP=true;
+      h+='<table class="otbl"><tr><th>업체 옵션 (구간)</th><th class="n">수량</th><th class="n">단가</th><th class="n">금액</th></tr>';
+      gs.forEach(function(r){
+        var p=r.t?r.t.p:0;tq+=r.qty;if(p)tp+=p*r.qty;else allP=false;
+        h+='<tr><td>'+esc(r.label)
+          +'<div class="names">'+r.items.map(function(i){return esc(i.name)+' ('+agsOf(i)+'mm) '+i.qty+'개'}).join(', ')+'</div>'
+          +(r.t?'':'<div class="warn">설정한 구간보다 커요. 사이즈를 줄이거나 구간을 추가해 주세요.</div>')
+          +(r.t&&r.qty>50?'<div class="warn">50개를 넘어요. 업체 수량구간(1~50개)을 확인해 주세요.</div>':'')
+          +'</td><td class="n"><b>'+r.qty+'개</b></td><td class="n">'+(p?won(p):'-')+'</td><td class="n">'+(p?won(p*r.qty):'-')+'</td></tr>';
+      });
+      h+='<tr class="tot"><td>합계 · 디자인 '+state.items.length+'종</td><td class="n">'+tq+'개</td><td></td><td class="n">'+won(tp)+(allP?'':' +α')+'</td></tr></table>';
+    }
+    h+='<details id="tierBox"'+(tierOpen?' open':'')+' style="margin-top:12px"><summary style="cursor:pointer;font-size:13px;color:var(--sub)">구간·단가 설정 ('+state.tiers.length+'개, 수정하려면 누르세요)</summary><div class="tiers">'
+      +state.tiers.map(function(t,i){return '<span class="t"><input type="number" inputmode="numeric" min="1" step="1" data-ti="'+i+'" data-tk="mm" value="'+(t.mm||'')+'">mm 이하<input class="p" type="number" inputmode="numeric" min="0" step="10" data-ti="'+i+'" data-tk="p" value="'+(t.p||'')+'">원<button class="rm" data-trm="'+i+'" title="구간 삭제">✕</button></span>'}).join('')
+      +'<button class="btn sm" id="tAdd">+ 구간</button><button class="btn sm" id="tReset">기본값</button></div></details>'
+      +'<p class="info" style="text-align:left;margin-top:8px">구간은 실제 아크릴 크기(여백 포함)의 가로+세로 합으로 정해요. 단가는 업체 페이지(8T+1T접합, 1~50개 기준)를 보고 바꿀 수 있어요. 이름에 "수량 10"이 들어 있으면 수량으로 자동 입력돼요.</p>';
+    box.innerHTML=h;
+  }
+  function orderText(){
+    return orderGroups().map(function(r){
+      return r.label+' : '+r.qty+'개'+(r.t&&r.t.p?' ('+won(r.t.p*r.qty)+')':'')+'\n  - '+r.items.map(function(i){return i.name+' '+i.qty+'개'}).join('\n  - ');
+    }).join('\n');
+  }
+  function renderAll(){renderControls();renderEditor();renderStage();renderOrder();save()}
 
   /* image */
   function setImage(it,file,done,restore){
@@ -469,9 +559,9 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   $('#fitSeg').addEventListener('click',function(e){var f=e.target.dataset.f;if(!f)return;state.fit=(f==='fit');renderControls();renderStage();save()});
   $('#chkReal').addEventListener('change',function(e){state.real=e.target.checked;renderStage();save()});
   $('#chkRuler').addEventListener('change',function(e){state.ruler=e.target.checked;renderStage();save()});
-  $('#chkInc').addEventListener('change',function(e){state.mInc=e.target.checked;renderStage();save()});
-  $('#msIn').addEventListener('input',function(e){var v=parseFloat(e.target.value);if(!(v>=0))return;state.ms=Math.min(v,20);renderStage();save()});
-  $('#mcIn').addEventListener('input',function(e){var v=parseFloat(e.target.value);if(!(v>=0))return;state.mc=Math.min(v,20);renderStage();save()});
+  $('#chkInc').addEventListener('change',function(e){state.mInc=e.target.checked;syncTiers();renderStage();renderOrder();save()});
+  $('#msIn').addEventListener('input',function(e){var v=parseFloat(e.target.value);if(!(v>=0))return;state.ms=Math.min(v,20);syncTiers();renderStage();renderOrder();save()});
+  $('#mcIn').addEventListener('input',function(e){var v=parseFloat(e.target.value);if(!(v>=0))return;state.mc=Math.min(v,20);syncTiers();renderStage();renderOrder();save()});
   $('#gap').addEventListener('input',function(e){state.gap=parseFloat(e.target.value)||0;$('#gapVal').textContent=fmt(state.gap)+' cm';renderStage();save()});
   function step(d){
     var i=state.items.findIndex(function(x){return x.id===state.sel});
@@ -502,7 +592,8 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   list.addEventListener('input',function(e){
     var t=e.target,f=t.dataset.f;if(!f||f==='lock')return;
     var it=get(t.closest('.card').dataset.id);if(!it)return;
-    if(f==='name'){it.name=t.value}
+    if(f==='name'){it.name=t.value;var nq=qtyFromName(it.name);if(nq&&nq!==it.qty){it.qty=nq;syncCard(it,'name')}}
+    else if(f==='qty'){var q=parseInt(t.value,10);if(!(q>=0))return;it.qty=Math.min(q,99999)}
     else{
       var v=parseFloat(t.value);if(!(v>0))return;v=Math.min(v,200);
       if(f==='w'){it.w=v;if(it.bwAuto)it.bw=v;if(it.lock&&it.nw)it.h=hFromW(it,v)}
@@ -522,13 +613,13 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       }
       syncCard(it,f);
     }
-    renderStage();save();
+    syncTiers();renderStage();renderOrder();save();
   });
   list.addEventListener('change',function(e){
     var t=e.target;if(t.dataset.f!=='lock')return;
     var it=get(t.closest('.card').dataset.id);it.lock=t.checked;
     if(it.lock&&it.nw){it.h=hFromW(it,it.w);syncCard(it)}
-    renderStage();save();
+    syncTiers();renderStage();renderOrder();save();
   });
   list.addEventListener('click',function(e){
     var card=e.target.closest('.card');if(!card)return;
@@ -545,12 +636,37 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     if(act==='tcoro')it.type='corotto';
     if(act==='bt3')it.bt=3;
     if(act==='bt5')it.bt=5;
-    if(act==='dup'){var c=mk(it);c.name=it.name+' 복사';c.bwAuto=it.bwAuto;c.img=it.img;c.im=it.im;c.imgKey=it.imgKey;c.imgId=it.imgId;c.nw=it.nw;c.nh=it.nh;c.lock=it.lock;state.items.splice(idx+1,0,c);state.sel=c.id}
+    if(act==='dup'){var c=mk(it);c.name=it.name+' 복사';c.bwAuto=it.bwAuto;c.img=it.img;c.im=it.im;c.imgKey=it.imgKey;c.imgId=it.imgId;c.nw=it.nw;c.nh=it.nh;c.lock=it.lock;c.qty=it.qty;state.items.splice(idx+1,0,c);state.sel=c.id}
     if(act==='del'){state.items.splice(idx,1);if(state.sel===id)state.sel=state.items.length?state.items[Math.max(0,idx-1)].id:null}
     if(act==='left'&&idx>0){state.items.splice(idx,1);state.items.splice(idx-1,0,it)}
     if(act==='right'&&idx<state.items.length-1){state.items.splice(idx,1);state.items.splice(idx+1,0,it)}
     renderAll();
     if(act==='del')imgGC();
+  });
+
+  /* 발주 구간 설정 */
+  var order=$('#order');
+  order.addEventListener('input',function(e){
+    var t=e.target;if(t.dataset.ti===undefined)return;
+    var tr=state.tiers[+t.dataset.ti];if(!tr)return;
+    var v=parseFloat(t.value);tr[t.dataset.tk]=v>0?v:0;
+    syncTiers();save();
+  });
+  order.addEventListener('toggle',function(e){if(e.target.id==='tierBox')tierOpen=e.target.open},true);
+  order.addEventListener('change',function(e){if(e.target.dataset.ti!==undefined)renderOrder()});
+  order.addEventListener('click',function(e){
+    var t=e.target;
+    if(t.dataset.trm!==undefined){state.tiers.splice(+t.dataset.trm,1)}
+    else if(t.id==='tAdd'){var ts=sortedTiers(),l=ts[ts.length-1];state.tiers.push({mm:l?l.mm+10:100,p:l?l.p+200:0})}
+    else if(t.id==='tReset'){state.tiers=DEF_TIERS.map(function(x){return {mm:x.mm,p:x.p}})}
+    else return;
+    syncTiers();renderOrder();save();
+  });
+  $('#btnCopy').addEventListener('click',function(){
+    var txt=orderText(),b=$('#btnCopy');
+    function ok(){b.textContent='복사됨';setTimeout(function(){b.textContent='복사'},1500)}
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(ok,function(){prompt('아래 내용을 복사해 주세요',txt)});
+    else prompt('아래 내용을 복사해 주세요',txt);
   });
 
   /* drag & drop */
