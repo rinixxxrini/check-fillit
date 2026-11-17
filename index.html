@@ -44,6 +44,7 @@ input[type=checkbox]{accent-color:var(--accent-d);width:16px;height:16px}
 .item.dropL::before,.item.dropR::after{content:'';position:absolute;top:0;bottom:0;width:4px;border-radius:2px;background:var(--accent-d)}
 .item.dropL::before{left:-8px}.item.dropR::after{right:-8px}
 .card.dropB{box-shadow:0 -3px 0 var(--accent-d)}.card.dropA{box-shadow:0 3px 0 var(--accent-d)}
+#stage.dropNew::after{content:'여기에 놓으면 새 줄';position:absolute;left:8px;right:8px;bottom:4px;height:22px;border:2px dashed var(--accent-d);border-radius:8px;background:rgba(192,206,218,.5);font-size:12px;color:var(--txt);display:flex;align-items:center;justify-content:center;z-index:30}
 .grip{flex:none;color:#a0a0a8;font-size:15px;line-height:1;padding:8px 2px;cursor:grab;touch-action:none;user-select:none}
 .chd{user-select:none}
 .item.sel{outline:2px dashed var(--accent-d);outline-offset:6px;border-radius:2px}
@@ -274,7 +275,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
   function mk(o){
     var w=o.w||7.5;
-    return {id:uid++,name:o.name||'굿즈 '+uid,type:o.type==='corotto'?'corotto':'stand',bt:o.bt===5?5:3,w:w,h:o.h||8.5,bw:o.bw||w,bwAuto:o.bwAuto!==false,lock:o.lock!==false,img:o.img||null,imgId:o.imgId||null,nw:o.nw||0,nh:o.nh||0,qty:o.qty>=0?Math.floor(o.qty):(qtyFromName(o.name)||1)};
+    return {id:uid++,name:o.name||'굿즈 '+uid,type:o.type==='corotto'?'corotto':'stand',bt:o.bt===5?5:3,w:w,h:o.h||8.5,bw:o.bw||w,bwAuto:o.bwAuto!==false,lock:o.lock!==false,img:o.img||null,imgId:o.imgId||null,nw:o.nw||0,nh:o.nh||0,qty:o.qty>=0?Math.floor(o.qty):(qtyFromName(o.name)||1),row:o.row>=0?Math.floor(o.row):undefined};
   }
   /* 이름에 '수량 10' 이 있으면 수량으로 읽는다 */
   function qtyFromName(n){var m=/수량\s*[:=]?\s*(\d+)/.exec(n||'');return m?parseInt(m[1],10):0}
@@ -287,6 +288,22 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   function inTab(i){return (i.type==='corotto'?'corotto':'stand')===state.tab}
   function vis(){return state.items.filter(inTab)}
   function tabName(t){return (t||state.tab)==='corotto'?'코롯토':'아크릴 스탠드'}
+  /* 나란히 보기 줄: 아이템마다 줄 번호(it.row). 새로 넣은 것은 마지막 줄에(6개 차면 다음 줄),
+     끌어서 옮기면 그 줄로 가고 한 줄 개수 제한은 없다. 빈 줄은 없애고 0,1,2… 로 다시 번호를 매긴다 */
+  var PER_ROW=6;
+  function normRows(V){
+    var last=-1,cnt=0,i,it;
+    for(i=0;i<V.length;i++){it=V[i];
+      if(it.row>=0){if(it.row>last){last=it.row;cnt=0}if(it.row===last)cnt++;continue}
+      if(last<0){last=0;cnt=0}
+      if(cnt>=PER_ROW){last++;cnt=0}
+      it.row=last;cnt++;
+    }
+    var used=[];V.forEach(function(x){if(used.indexOf(x.row)<0)used.push(x.row)});used.sort(function(a,b){return a-b});
+    V.forEach(function(x){x.row=used.indexOf(x.row)});
+    var rows=used.map(function(){return []});V.forEach(function(x){rows[x.row].push(x)});
+    return rows;
+  }
   function get(id){for(var i=0;i<state.items.length;i++)if(state.items[i].id==id)return state.items[i]}
 
   /* 이미지 저장소 (IndexedDB) : 원본 파일을 imgId 키로 보관 */
@@ -326,7 +343,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   function save(){
     try{
       localStorage.setItem(KEY,JSON.stringify({
-        items:state.items.map(function(i){return {name:i.name,type:i.type,bt:i.bt,w:i.w,h:i.h,bw:i.bw,bwAuto:i.bwAuto,lock:i.lock,imgId:i.imgId||null,qty:i.qty}}),
+        items:state.items.map(function(i){return {name:i.name,type:i.type,bt:i.bt,w:i.w,h:i.h,bw:i.bw,bwAuto:i.bwAuto,lock:i.lock,imgId:i.imgId||null,qty:i.qty,row:i.row}}),
         tab:state.tab,mode:state.mode,real:state.real,gap:state.gap,fit:state.fit,ruler:state.ruler,px:state.px,ms:state.ms,mc:state.mc,mInc:state.mInc,tiers:state.tiers,tiersS:state.tiersS
       }));
     }catch(e){}
@@ -492,8 +509,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     var bhOf=function(i){return (real&&isSt(i))?(i.bt||3)/10:0}; /* 받침 두께 (cm) */
     var bwOf=function(i){return (real&&isSt(i))?Math.max(AW(i),i.bwAuto?AW(i):i.bw):AW(i)};
     var foot=function(i){return Math.max(AW(i),bwOf(i))};
-    var PER_ROW=6; /* 나란히 보기: 6개마다 줄바꿈 */
-    var rows=[];for(var ri=0;ri<list.length;ri+=PER_ROW)rows.push(list.slice(ri,ri+PER_ROW));
+    var rows=state.mode==='one'?[list]:normRows(list);
     var rowW=function(r){return r.reduce(function(a,i){return a+foot(i)},0)+g*(r.length-1)};
     var rowH=function(r){return Math.max.apply(null,r.map(function(i){return AH(i)+bhOf(i)}))};
     var totalCm=Math.max.apply(null,rows.map(rowW));
@@ -506,7 +522,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     }else s=state.px;
     var stageW=Math.max(availW,fullCm*s);
     var floorH=LABEL_PX+(state.ruler?RULER_PX:0);
-    var tagHtml='<div class="tag">실제 비율'+(real&&state.tab==='stand'?' · 스탠드 받침은 3/5mm 두께 반영':'')+(rows.length>1?' · '+PER_ROW+'개씩 줄바꿈':'')+'</div>';
+    var tagHtml='<div class="tag">실제 비율'+(real&&state.tab==='stand'?' · 스탠드 받침은 3/5mm 두께 반영':'')+(state.mode==='side'?' · 끌어서 순서·줄 바꾸기':'')+'</div>';
     var html='',rowY=0;
     rows.forEach(function(row){
     var rw=rowW(row);
@@ -805,8 +821,8 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       if(o.handle&&!e.target.closest(o.handle))return;
       if(e.target.closest('input,textarea,select,button'))return;
       if(e.pointerType!=='mouse'&&!o.touchOk(el,e))return;
-      var id=+el.dataset.id,sx=e.clientX,sy=e.clientY,moved=false,tgt=null,after=false;
-      function clear(){root.querySelectorAll('.dropL,.dropR,.dropB,.dropA').forEach(function(x){x.classList.remove('dropL','dropR','dropB','dropA')})}
+      var id=+el.dataset.id,sx=e.clientX,sy=e.clientY,moved=false,tgt=null,after=false,newRow=false;
+      function clear(){root.classList.remove('dropNew');root.querySelectorAll('.dropL,.dropR,.dropB,.dropA').forEach(function(x){x.classList.remove('dropL','dropR','dropB','dropA')})}
       function move(ev){
         var dx=ev.clientX-sx,dy=ev.clientY-sy;
         if(!moved){if(Math.abs(dx)+Math.abs(dy)<6)return;moved=true;el.classList.add('dragging')}
@@ -818,8 +834,9 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
           var cx=Math.max(r.left,Math.min(ev.clientX,r.right)),cy=Math.max(r.top,Math.min(ev.clientY,r.bottom));
           var d=Math.hypot(ev.clientX-cx,ev.clientY-cy);if(d<bd){bd=d;best=x}
         });
-        clear();tgt=null;
-        if(best&&bd<80){
+        clear();tgt=null;newRow=false;
+        if(o.horiz&&ev.clientY>root.getBoundingClientRect().bottom-24){newRow=true;root.classList.add('dropNew');return} /* 맨 아래로 끌면 새 줄 */
+        if(best&&(o.horiz||bd<80)){
           var r=best.getBoundingClientRect();tgt=+best.dataset.id;
           after=o.horiz?ev.clientX>r.left+r.width/2:ev.clientY>r.top+r.height/2;
           best.classList.add(o.horiz?(after?'dropR':'dropL'):(after?'dropA':'dropB'));
@@ -830,11 +847,18 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
         el.classList.remove('dragging');el.style.transform='';clear();
         if(!moved)return;
         justDragged=true;setTimeout(function(){justDragged=false},0);
-        if(tgt==null||tgt===id)return;
         var it=get(id);if(!it)return;
+        if(newRow){ /* 새 줄 맨 끝으로 */
+          var mx=-1;vis().forEach(function(x){if(x!==it&&x.row>mx)mx=x.row});
+          state.items.splice(state.items.indexOf(it),1);state.items.push(it);it.row=mx+1;
+          renderAll();return;
+        }
+        if(tgt==null||tgt===id)return;
+        var T=get(tgt);if(!T)return;
         state.items.splice(state.items.indexOf(it),1);
-        var ti=state.items.indexOf(get(tgt));if(ti<0)ti=state.items.length-1;
+        var ti=state.items.indexOf(T);if(ti<0)ti=state.items.length-1;
         state.items.splice(ti+(after?1:0),0,it);
+        it.row=T.row; /* 놓은 줄로 옮김 (한 줄 개수 제한 없음) */
         renderAll();
       }
       window.addEventListener('pointermove',move,{passive:false});window.addEventListener('pointerup',up);window.addEventListener('pointercancel',up);
@@ -899,7 +923,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     }
     var idx=state.items.findIndex(function(x){return x.id===id}),it=state.items[idx];
     if(act==='img'){repId=id;$('#fileRep').click();return}
-    if(act==='tstand'||act==='tcoro'){it.type=act==='tcoro'?'corotto':'stand';if(state.sel===id)state.sel=null} /* 다른 탭으로 옮기기 */
+    if(act==='tstand'||act==='tcoro'){it.type=act==='tcoro'?'corotto':'stand';it.row=undefined;if(state.sel===id)state.sel=null} /* 다른 탭으로 옮기기 */
     if(act==='bt3')it.bt=3;
     if(act==='bt5')it.bt=5;
     if(act==='dup'){var c=mk(it);c.name=it.name+' 복사';c.bwAuto=it.bwAuto;c.img=it.img;c.im=it.im;c.imgKey=it.imgKey;c.imgId=it.imgId;c.nw=it.nw;c.nh=it.nh;c.lock=it.lock;c.qty=it.qty;state.items.splice(idx+1,0,c);state.sel=c.id}
