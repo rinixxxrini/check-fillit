@@ -101,6 +101,24 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
 }
 @media(min-width:1500px){.layout{grid-template-columns:minmax(0,1fr) 400px}}
 
+/* 굿즈 목록: 선택한 것만 펼치고 나머지는 한 줄 요약 */
+.chd{display:flex;align-items:center;gap:10px;cursor:pointer;min-height:44px}
+.cth{width:44px;height:44px;flex:none;border-radius:8px;background:var(--panel2);border:1px solid var(--line);overflow:hidden;display:flex;align-items:center;justify-content:center}
+.cth img{width:100%;height:100%;object-fit:contain;display:block}
+.cth:empty::after{content:'';width:18px;height:22px;border:1.5px dashed #b5b5bb;border-radius:6px 6px 2px 2px}
+.cmeta{flex:1;min-width:0}
+.cnm{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.csum{font-size:12px;color:var(--sub);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.csum b{color:var(--txt);font-weight:600}
+.csum em{color:#c42a3a;font-style:normal}
+.chev{color:var(--sub);font-size:12px;transition:transform .15s}
+.card.sel .chev{transform:rotate(180deg);color:var(--accent)}
+.card:not(.sel) .cbd{display:none}
+.card:not(.sel){padding:7px 10px}
+.card:not(.sel):hover{border-color:#c9c9cf}
+.card.sel .chd{padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--line)}
+#list{gap:8px}
+
 /* order summary */
 #order{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:4px}
 .otbl{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums}
@@ -522,6 +540,12 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     var box=$('#list');
     box.innerHTML=state.items.map(function(it,idx){
       return '<div class="card'+(it.id===state.sel?' sel':'')+'" data-id="'+it.id+'">'
+       +'<div class="chd" title="눌러서 편집">'
+         +'<div class="cth">'+(it.img?'<img src="'+it.img+'" alt="">':'')+'</div>'
+         +'<div class="cmeta"><div class="cnm">'+(esc(it.name)||'(이름 없음)')+'</div><div class="csum" data-sum>'+sumHtml(it)+'</div></div>'
+         +'<span class="chev">▾</span>'
+       +'</div>'
+       +'<div class="cbd">'
        +'<input type="text" data-f="name" value="'+esc(it.name)+'" placeholder="이름">'
        +'<div class="seg" style="margin-top:8px"><button data-act="tstand" class="'+(it.type!=='corotto'?'on':'')+'">아크릴 스탠드</button><button data-act="tcoro" class="'+(it.type==='corotto'?'on':'')+'">코롯토 (직립형)</button></div>'
        +'<div class="row">'
@@ -542,7 +566,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
          +'<button class="btn sm" data-act="left"'+(idx===0?' disabled':'')+'>◀</button>'
          +'<button class="btn sm" data-act="right"'+(idx===state.items.length-1?' disabled':'')+'>▶</button>'
          +'<button class="btn sm danger" data-act="del">삭제</button>'
-       +'</div></div>';
+       +'</div></div></div>';
     }).join('')||'<div class="info" style="padding:24px 8px">아직 굿즈가 없어요. 위 버튼으로 추가해 주세요.</div>';
   }
   function tierHtml(it){
@@ -550,10 +574,20 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     return t?'발주 구간: <b>'+t.mm+'mm 이하</b>'+(t.p?' · '+won(t.p)+(t.est?'(추정)':''):'')+' (아크릴 가세 '+agsOf(it)+'mm)'
             :'<b>업체 최대 구간보다 큼</b> · 아크릴 가세 '+agsOf(it)+'mm';
   }
+  /* 접힌 줄에 보이는 한 줄 요약: 가로×세로 · 가세 · 종류 · 수량 · 금액 */
+  function sumHtml(it){
+    var t=tierOf(it);
+    return '<b>'+fmt(it.w)+'×'+fmt(it.h)+'</b> · 가세'+gsOf(it)
+      +' · '+(it.type==='corotto'?'코롯토':'스탠드 '+(it.bt||3)+'mm')
+      +' · '+it.qty+'개'
+      +(t&&t.p?' · '+won(t.p*it.qty):(t?'':' · <em>구간 초과</em>'));
+  }
   function syncTiers(){
     document.querySelectorAll('.card').forEach(function(c){
-      var it=get(c.dataset.id),el=c.querySelector('[data-tier]');if(!it||!el)return;
-      el.innerHTML=tierHtml(it);el.classList.toggle('over',!tierOf(it));
+      var it=get(c.dataset.id);if(!it)return;
+      var el=c.querySelector('[data-tier]');
+      if(el){el.innerHTML=tierHtml(it);el.classList.toggle('over',!tierOf(it))}
+      var sm=c.querySelector('[data-sum]');if(sm)sm.innerHTML=sumHtml(it);
     });
   }
   function syncCard(it,except){
@@ -694,7 +728,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   list.addEventListener('input',function(e){
     var t=e.target,f=t.dataset.f;if(!f||f==='lock')return;
     var it=get(t.closest('.card').dataset.id);if(!it)return;
-    if(f==='name'){it.name=t.value;var nq=qtyFromName(it.name);if(nq&&nq!==it.qty){it.qty=nq;syncCard(it,'name')}}
+    if(f==='name'){it.name=t.value;var nm=t.closest('.card').querySelector('.cnm');if(nm)nm.textContent=it.name||'(이름 없음)';var nq=qtyFromName(it.name);if(nq&&nq!==it.qty){it.qty=nq;syncCard(it,'name')}}
     else if(f==='qty'){var q=parseInt(t.value,10);if(!(q>=0))return;it.qty=Math.min(q,99999)}
     else{
       var v=parseFloat(t.value);if(!(v>0))return;v=Math.min(v,f==="gs"?4000:200); /* 가로·세로·받침은 cm(최대 200cm), 가세는 mm(최대 4000mm) */
@@ -732,7 +766,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     if(!act){
       if(e.target.tagName==='INPUT')return;
       if(state.sel!==id){state.sel=id;renderControls();
-        document.querySelectorAll('.card').forEach(function(c){c.classList.toggle('sel',c.dataset.id==id)});renderStage()}
+        document.querySelectorAll('.card').forEach(function(c){c.classList.toggle('sel',c.dataset.id==id)});renderStage();showSel()}
       return;
     }
     var idx=state.items.findIndex(function(x){return x.id===id}),it=state.items[idx];
