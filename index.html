@@ -85,7 +85,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
 .otbl th{font-weight:600;color:var(--sub);font-size:12px;text-align:left;padding:6px 6px;border-bottom:1px solid var(--line)}
 .otbl td{padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
 .otbl td.n{text-align:right;white-space:nowrap}
-.otbl th.n{text-align:right}
+.otbl th.n{text-align:right;white-space:nowrap}
 .otbl tr.tot td{border-bottom:0;font-weight:700}
 .otbl .names{color:var(--sub);font-size:12px;margin-top:2px;word-break:keep-all}
 .otbl .warn{color:#ff8b8f;font-size:12px;margin-top:2px}
@@ -183,7 +183,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   var BASE_H=1.0, OVER=0.35, PAD=1.5, TOP=1.0, LABEL_PX=92, RULER_PX=26;
   var uid=1,imgSeq=0;
   /* 업체 옵션: [가로+세로] N mm 이하 구간과 단가(원) — 화면에서 수정 가능 */
-  var DEF_TIERS=[{mm:100,p:3700},{mm:110,p:3900},{mm:120,p:4100}];
+  var DEF_TIERS=[[40,2500],[50,2800],[60,2900],[70,3100],[80,3300],[90,3500],[100,3700],[110,3900],[120,4100],[140,4400],[150,4600],[180,5000]].map(function(t){return {mm:t[0],p:t[1]}});
   var state={items:[],mode:'side',real:true,gap:0.5,fit:true,ruler:false,sel:null,px:DEF_PX,ms:2,mc:3,mInc:true,tiers:DEF_TIERS.map(function(t){return {mm:t.mm,p:t.p}})};
   function M(i){return Math.max(0,(i&&i.type==='corotto'?state.mc:state.ms)||0)/10} /* 사방 여백 (cm): 스탠드 2mm / 코롯토 3mm */
   /* mInc=false(기본): 입력 크기 = 그림(발주 파일) 크기, 업체가 바깥으로 여백 추가 / true: 입력 크기에 여백 포함 */
@@ -495,6 +495,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     });
     return keys.map(function(k){return g[k]}).sort(function(a,b){return a.sort-b.sort});
   }
+  var tierOpen=false;
   function renderOrder(){
     var box=$('#order'),gs=orderGroups();
     var h='';
@@ -512,9 +513,9 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       });
       h+='<tr class="tot"><td>합계 · 디자인 '+state.items.length+'종</td><td class="n">'+tq+'개</td><td></td><td class="n">'+won(tp)+(allP?'':' +α')+'</td></tr></table>';
     }
-    h+='<div class="tiers"><span>구간·단가 설정:</span>'
+    h+='<details id="tierBox"'+(tierOpen?' open':'')+' style="margin-top:12px"><summary style="cursor:pointer;font-size:13px;color:var(--sub)">구간·단가 설정 ('+state.tiers.length+'개, 수정하려면 누르세요)</summary><div class="tiers">'
       +state.tiers.map(function(t,i){return '<span class="t"><input type="number" inputmode="numeric" min="1" step="1" data-ti="'+i+'" data-tk="mm" value="'+(t.mm||'')+'">mm 이하<input class="p" type="number" inputmode="numeric" min="0" step="10" data-ti="'+i+'" data-tk="p" value="'+(t.p||'')+'">원<button class="rm" data-trm="'+i+'" title="구간 삭제">✕</button></span>'}).join('')
-      +'<button class="btn sm" id="tAdd">+ 구간</button><button class="btn sm" id="tReset">기본값</button></div>'
+      +'<button class="btn sm" id="tAdd">+ 구간</button><button class="btn sm" id="tReset">기본값</button></div></details>'
       +'<p class="info" style="text-align:left;margin-top:8px">구간은 실제 아크릴 크기(여백 포함)의 가로+세로 합으로 정해요. 단가는 업체 페이지(8T+1T접합, 1~50개 기준)를 보고 바꿀 수 있어요. 이름에 "수량 10"이 들어 있으면 수량으로 자동 입력돼요.</p>';
     box.innerHTML=h;
   }
@@ -651,6 +652,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     var v=parseFloat(t.value);tr[t.dataset.tk]=v>0?v:0;
     syncTiers();save();
   });
+  order.addEventListener('toggle',function(e){if(e.target.id==='tierBox')tierOpen=e.target.open},true);
   order.addEventListener('change',function(e){if(e.target.dataset.ti!==undefined)renderOrder()});
   order.addEventListener('click',function(e){
     var t=e.target;
