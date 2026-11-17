@@ -335,17 +335,18 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
         var dg=edt(ero,PW,PH);
         for(i=0;i<N;i++)shape[i]=dg[i]<=rc*rc?1:0;
       }
-      /* 코롯토: 바깥과 이어지지 않은 안쪽 빈 곳(구멍)은 뚫지 않고 메운다 */
-      var seen=new Uint8Array(N),st=[],q;
-      for(x=0;x<PW;x++){st.push(x,(PH-1)*PW+x)}
-      for(y=0;y<PH;y++){st.push(y*PW,y*PW+PW-1)}
-      while(st.length){
-        q=st.pop();if(seen[q]||shape[q])continue;seen[q]=1;
-        x=q%PW;
-        if(x>0)st.push(q-1);if(x<PW-1)st.push(q+1);if(q>=PW)st.push(q-PW);if(q<N-PW)st.push(q+PW);
-      }
-      for(i=0;i<N;i++)if(!seen[i])shape[i]=1;
     }
+
+    /* 스탠드·코롯토 공통: 바깥과 이어지지 않은 안쪽 빈 곳(구멍)은 뚫지 않고 메운다 (실물 제작 기준) */
+    var seen=new Uint8Array(N),st=[],q;
+    for(x=0;x<PW;x++){st.push(x,(PH-1)*PW+x)}
+    for(y=0;y<PH;y++){st.push(y*PW,y*PW+PW-1)}
+    while(st.length){
+      q=st.pop();if(seen[q]||shape[q])continue;seen[q]=1;
+      x=q%PW;
+      if(x>0)st.push(q-1);if(x<PW-1)st.push(q+1);if(q>=PW)st.push(q-PW);if(q<N-PW)st.push(q+PW);
+    }
+    for(i=0;i<N;i++)if(!seen[i])shape[i]=1;
     for(i=0;i<N;i++)inv[i]=shape[i]?0:1;
     var d3=edt(inv,PW,PH),L2=Math.pow(Math.max(1.2,u*0.02),2);
     var cv=document.createElement('canvas');cv.width=W;cv.height=H;
