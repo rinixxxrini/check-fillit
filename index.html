@@ -666,8 +666,11 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       else if(f==='bw'){it.bw=v;it.bwAuto=false}
       else if(f==='gs'){
         /* 가세(mm) 입력 → 현재 비율(이미지 있으면 이미지 비율)로 가로·세로 계산 */
+        /* 입력 중간값(1, 10 …)으로 비율이 정사각형으로 뭉개지지 않게, 너무 작은 값은 무시.
+           이미지가 있으면 '비율 유지'와 관계없이 이미지 비율로 나눈다 */
         var S=v/10, m2=2*AM(it);
-        if(it.lock&&it.nw){
+        if(S<Math.max(2,2*m2+1))return;
+        if(it.nw&&it.nh){
           var aw=Math.max(0.1,S-2*m2)*it.nw/(it.nw+it.nh); /* 그림 영역 비율 기준 */
           it.w=Math.max(0.1,r1(aw+m2));
         }else{
