@@ -337,16 +337,31 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       }
     }
 
-    /* 스탠드·코롯토 공통: 바깥과 이어지지 않은 안쪽 빈 곳(구멍)은 뚫지 않고 메운다 (실물 제작 기준) */
-    var seen=new Uint8Array(N),st=[],q;
-    for(x=0;x<PW;x++){st.push(x,(PH-1)*PW+x)}
-    for(y=0;y<PH;y++){st.push(y*PW,y*PW+PW-1)}
-    while(st.length){
-      q=st.pop();if(seen[q]||shape[q])continue;seen[q]=1;
-      x=q%PW;
-      if(x>0)st.push(q-1);if(x<PW-1)st.push(q+1);if(q>=PW)st.push(q-PW);if(q<N-PW)st.push(q+PW);
+    /* 스탠드·코롯토 공통: 안쪽 빈 곳(구멍)은 뚫지 않고 메운다 (실물 제작 기준).
+       입구가 좁은 곳(약 여백×2 이하)도 갇힌 것으로 본다: 반지름 g로 닫은 모양에서 바깥과 안 이어진 빈 곳 = 구멍 */
+    var G=Math.max(2,r),G2=G*G,dS=edt(shape,PW,PH),nd=new Uint8Array(N),closed=new Uint8Array(N);
+    for(i=0;i<N;i++)nd[i]=dS[i]<=G2?0:1;
+    var dI=edt(nd,PW,PH);
+    for(i=0;i<N;i++)closed[i]=(shape[i]||dI[i]>G2)?1:0;
+    var seen,st,q;
+    function outside(wall){
+      seen=new Uint8Array(N);st=[];
+      for(x=0;x<PW;x++){st.push(x,(PH-1)*PW+x)}
+      for(y=0;y<PH;y++){st.push(y*PW,y*PW+PW-1)}
+      while(st.length){
+        q=st.pop();if(seen[q]||wall[q])continue;seen[q]=1;
+        x=q%PW;
+        if(x>0)st.push(q-1);if(x<PW-1)st.push(q+1);if(q>=PW)st.push(q-PW);if(q<N-PW)st.push(q+PW);
+      }
     }
-    for(i=0;i<N;i++)if(!seen[i])shape[i]=1;
+    outside(shape);for(i=0;i<N;i++)if(!seen[i])shape[i]=1;  /* 완전히 갇힌 구멍 */
+    outside(closed);                                         /* 입구가 좁은 빈 곳 */
+    var core=new Uint8Array(N),anyCore=false;
+    for(i=0;i<N;i++)if(!seen[i]&&!closed[i]){core[i]=1;anyCore=true}
+    if(anyCore){
+      var dC=edt(core,PW,PH);
+      for(i=0;i<N;i++)if(core[i]||(closed[i]&&dC[i]<=G2*1.05))shape[i]=1;
+    }
     for(i=0;i<N;i++)inv[i]=shape[i]?0:1;
     var d3=edt(inv,PW,PH),L2=Math.pow(Math.max(1.2,u*0.02),2);
     var cv=document.createElement('canvas');cv.width=W;cv.height=H;
