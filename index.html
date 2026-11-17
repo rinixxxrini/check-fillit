@@ -321,7 +321,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       var yb=-1;
       for(y=PH-1;y>=0&&yb<0;y--)for(x=0;x<PW;x++)if(shape[y*PW+x]){yb=y;break}
       if(yb>=0){
-        var B=Math.round(r+c+ah*0.18),xl=PW,xr=-1,maxFill=PH,yy,nn,t;
+        var B=Math.round(c+ah*0.34),xl=PW,xr=-1,maxFill=PH,yy,nn,t;
         for(y=Math.max(0,yb-B);y<=yb;y++)for(x=0;x<PW;x++)if(shape[y*PW+x]){if(x<xl)xl=x;if(x>xr)xr=x}
         for(x=xl;x<=xr;x++){
           yy=yb;nn=0;
