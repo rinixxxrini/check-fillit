@@ -42,7 +42,8 @@ input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
 .cut{position:absolute;border:1px dashed rgba(60,66,80,.55);border-radius:3px}
 .img{position:absolute;display:flex;align-items:flex-end;justify-content:center}
 .img img{width:100%;height:100%;object-fit:contain;object-position:center bottom;display:block;pointer-events:none;-webkit-user-drag:none}
-.real .img,.acr{filter:drop-shadow(0 3px 5px rgba(30,35,50,.25))}
+.real .img{filter:drop-shadow(0 3px 5px rgba(30,35,50,.25))}
+.acr{filter:drop-shadow(0 1px 1.5px rgba(30,35,50,.18))}
 .acr{position:absolute;pointer-events:none;display:block}
 .real .ph{background:rgba(255,255,255,.9);border:1px solid #8d93a1;border-radius:14% 14% 3% 3%}
 .num{width:56px;background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:7px;padding:5px 7px;font:inherit;font-size:14px}
@@ -299,10 +300,10 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     return g;
   }
   function buildAcr(it,m,AWc,AHc){
-    var u=640/Math.max(AWc,AHc),W=Math.max(8,Math.round(AWc*u)),H=Math.max(8,Math.round(AHc*u));
+    var u=800/Math.max(AWc,AHc),W=Math.max(8,Math.round(AWc*u)),H=Math.max(8,Math.round(AHc*u));
     var aw=(AWc-2*m)*u,ah=(AHc-2*m)*u;
     if(aw<4||ah<4)return null;
-    var r=m*u,c=Math.max(1.5,r*0.6),pad=Math.ceil(c)+3;
+    var r=m*u,c=Math.max(1,r*0.2),pad=Math.ceil(c)+3;
     var art=document.createElement('canvas');art.width=W;art.height=H;
     var a=art.getContext('2d');
     var sc=Math.min(aw/it.nw,ah/it.nh),dw=it.nw*sc,dh=it.nh*sc;
@@ -320,7 +321,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       var yb=-1;
       for(y=PH-1;y>=0&&yb<0;y--)for(x=0;x<PW;x++)if(shape[y*PW+x]){yb=y;break}
       if(yb>=0){
-        var B=Math.max(2,Math.round(r+c),Math.round(H*0.12)),xl=PW,xr=-1,maxFill=PH,yy,nn,t;
+        var B=Math.round(r+c+ah*0.18),xl=PW,xr=-1,maxFill=PH,yy,nn,t;
         for(y=Math.max(0,yb-B);y<=yb;y++)for(x=0;x<PW;x++)if(shape[y*PW+x]){if(x<xl)xl=x;if(x>xr)xr=x}
         for(x=xl;x<=xr;x++){
           yy=yb;nn=0;
@@ -363,14 +364,18 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       for(i=0;i<N;i++)if(core[i]||(closed[i]&&dC[i]<=G2*1.05))shape[i]=1;
     }
     for(i=0;i<N;i++)inv[i]=shape[i]?0:1;
-    var d3=edt(inv,PW,PH),L2=Math.pow(Math.max(1.2,u*0.02),2);
+    /* 가장자리를 부드럽게(부호 거리) + 업체 시안처럼 얇은 회색 칼선 */
+    var d3=edt(inv,PW,PH),d4=edt(shape,PW,PH),Lw=Math.max(1.8,Math.max(W,H)/380),sd,cov,ln;
     var cv=document.createElement('canvas');cv.width=W;cv.height=H;
     var o=cv.getContext('2d'),img=o.createImageData(W,H),dd=img.data;
     for(y=0;y<H;y++)for(x=0;x<W;x++){
-      i=(y+pad)*PW+x+pad;if(!shape[i])continue;
+      i=(y+pad)*PW+x+pad;
+      sd=shape[i]?Math.sqrt(d3[i])-0.5:0.5-Math.sqrt(d4[i]);
+      cov=Math.min(1,Math.max(0,sd+0.5));if(cov<=0)continue;
+      ln=Math.min(1,Math.max(0,Lw+0.5-sd));
       k=(y*W+x)*4;
-      if(d3[i]<=L2){dd[k]=128;dd[k+1]=134;dd[k+2]=148;dd[k+3]=255}
-      else{dd[k]=255;dd[k+1]=255;dd[k+2]=255;dd[k+3]=235}
+      dd[k]=255-ln*(255-112);dd[k+1]=255-ln*(255-117);dd[k+2]=255-ln*(255-128);
+      dd[k+3]=Math.round(cov*(235+ln*20));
     }
     o.putImageData(img,0,0);o.drawImage(art,0,0);
     return cv;
