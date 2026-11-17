@@ -36,13 +36,13 @@
 - 이미지는 투명 배경 PNG를 올린다 (파일 선택, 여러 장 한 번에, 화면에 끌어다 놓기 모두 가능). 이미지는 브라우저 메모리에서만 쓰이고 어디에도 업로드되지 않는다.
 - 보기 방식: **하나씩** / **나란히 실제 비율**, 실물처럼 보기(아크릴 테두리·받침·그림자), 간격 슬라이더(cm), 눈금자.
 - 크기: **화면 맞춤**(물건끼리 비율은 정확, 화면 크기에 맞춰 축소) / **실제 크기**(1cm = N px). "화면 보정"에서 신용카드(8.56×5.4cm)를 화면에 대 보고 N을 맞춘다. 기본값은 PC 37.8px/cm, 터치 기기 63px/cm.
-- 사이즈 값·설정은 `localStorage`(키 `acrylic-size-viewer-v2`)에 저장된다. 이미지는 저장하지 않으므로 새로고침하면 다시 올려야 한다.
+- 사이즈 값·설정은 `localStorage`(키 `acrylic-size-viewer-v2`)에 저장된다. 이미지 원본은 IndexedDB(DB `acrylic-size-viewer-img`, 저장소 `imgs`, 키 = 아이템의 `imgId`)에 저장되어 새로고침 후에도 복원된다. 어떤 카드에서도 쓰지 않는 이미지는 `imgGC()`가 지운다. 같은 브라우저·같은 주소에서만 유지된다.
 - UI 언어는 한국어.
 
 ## 구현 메모 (`index.html` 안의 IIFE)
 
 - 상태: `state = {items, mode('one'|'side'), real, gap, fit, ruler, sel, px, ms, mc, mInc}`.
-  아이템: `{id, name, type('stand'|'corotto'), bt(3|5), w, h, bw, bwAuto, lock, img(blob url), im(Image), nw, nh, imgKey}`.
+  아이템: `{id, name, type('stand'|'corotto'), bt(3|5), w, h, bw, bwAuto, lock, img(blob url), imgId(IndexedDB 키), im(Image), nw, nh, imgKey}`.
 - 여백/크기 헬퍼: `M(it)` 여백(cm), `E(it)` 바깥으로 더해지는 여백, `AM(it)` 안쪽에 포함된 여백, `AW(it)`/`AH(it)` 실제 아크릴 가로/세로, `gsOf(it)` 가세(mm), `hFromW`/`wFromH` 이미지 비율 유지 계산 (그림 영역 기준).
 - `renderStage()`: 배율 `s`(px/cm)를 정하고 아이템을 절대 위치로 배치한다. 라벨은 `가로×세로 · 가세N` / 종류·받침 / 아크릴 크기 / 디자인 크기·여백.
 - **윤곽 생성** `buildAcr()` + `edt()`: 이미지 알파 → 정확한 원형 확장(거리 변환, Felzenszwalb) → 오목한 부분 메우기(닫기, 반지름 c = 0.6·r) → 얇은 선 추출 → 흰 채움 + 회색 선 + 원본 이미지를 합성한 캔버스를 blob URL로 만들어 `acrUrl()`이 캐시한다. 비동기(`toBlob`)라서 처음에는 원본 이미지가 잠깐 보이다가 테두리가 붙는다.
@@ -54,7 +54,6 @@
 - 수량 입력, 받침 모양(사각 등), 발주 문구 자동 생성(`스탠드 N개 / 가세 N mm 이하 / W*H mm`).
 - 가로·세로를 mm 단위로 입력하는 옵션 (현재 cm, 가세만 mm).
 - 스탠드 몸체 아래쪽 돌기(받침 구멍에 꽂히는 부분) 표현은 없다.
-- 이미지까지 저장하려면 IndexedDB를 써야 한다.
 - 윤곽 계산은 이미지를 최대 약 640px로 줄여서 하므로 아주 작은 디테일은 뭉개질 수 있다.
 
 ## 배포 (GitHub Pages)

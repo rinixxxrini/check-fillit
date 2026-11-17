@@ -127,7 +127,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   </span>
 </h2>
 <div id="list"></div>
-<p class="info" style="margin-top:14px">이미지는 내 브라우저에서만 쓰이고 어디에도 업로드되지 않아요. 사이즈 값은 이 브라우저에 저장되지만 이미지는 새로고침하면 다시 올려야 해요.<br>기본은 입력한 가로·세로·가세가 사방 여백까지 포함한 최종 아크릴 크기예요(업체 안내처럼 디자인 크기 = 아크릴 크기 − 사방 여백, 여백은 스탠드 2mm·코롯토 3mm). 그림 크기만 입력하고 여백을 바깥에 더하고 싶다면 "입력 크기에 여백 포함"을 꺼 주세요. 투명 배경 PNG를 올리면 그 여백이 실제 아크릴처럼 흰 테두리로 보여요. 이미지를 화면에 끌어다 놓아도 추가돼요.</p>
+<p class="info" style="margin-top:14px">이미지는 내 브라우저에서만 쓰이고 어디에도 업로드되지 않아요. 사이즈 값과 이미지는 이 브라우저에 저장돼서 새로고침하거나 다시 들어와도 그대로 남아요(다른 기기·브라우저와는 공유되지 않아요).<br>기본은 입력한 가로·세로·가세가 사방 여백까지 포함한 최종 아크릴 크기예요(업체 안내처럼 디자인 크기 = 아크릴 크기 − 사방 여백, 여백은 스탠드 2mm·코롯토 3mm). 그림 크기만 입력하고 여백을 바깥에 더하고 싶다면 "입력 크기에 여백 포함"을 꺼 주세요. 투명 배경 PNG를 올리면 그 여백이 실제 아크릴처럼 흰 테두리로 보여요. 이미지를 화면에 끌어다 놓아도 추가돼요.</p>
 
 <input type="file" id="fileAdd" accept="image/*" multiple hidden>
 <input type="file" id="fileRep" accept="image/*" hidden>
@@ -173,15 +173,48 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
   function mk(o){
     var w=o.w||7.5;
-    return {id:uid++,name:o.name||'굿즈 '+uid,type:o.type==='corotto'?'corotto':'stand',bt:o.bt===5?5:3,w:w,h:o.h||8.5,bw:o.bw||w,bwAuto:o.bwAuto!==false,lock:o.lock!==false,img:o.img||null,nw:o.nw||0,nh:o.nh||0};
+    return {id:uid++,name:o.name||'굿즈 '+uid,type:o.type==='corotto'?'corotto':'stand',bt:o.bt===5?5:3,w:w,h:o.h||8.5,bw:o.bw||w,bwAuto:o.bwAuto!==false,lock:o.lock!==false,img:o.img||null,imgId:o.imgId||null,nw:o.nw||0,nh:o.nh||0};
   }
   function get(id){for(var i=0;i<state.items.length;i++)if(state.items[i].id==id)return state.items[i]}
 
-  /* persistence (sizes only) */
+  /* 이미지 저장소 (IndexedDB) : 원본 파일을 imgId 키로 보관 */
+  var IDB=null;
+  function idb(){
+    if(!IDB)IDB=new Promise(function(res,rej){
+      if(!window.indexedDB)return rej(new Error('no idb'));
+      var r=indexedDB.open('acrylic-size-viewer-img',1);
+      r.onupgradeneeded=function(){r.result.createObjectStore('imgs')};
+      r.onsuccess=function(){res(r.result)};
+      r.onerror=function(){rej(r.error)};
+    });
+    return IDB;
+  }
+  function idbDo(mode,fn){
+    return idb().then(function(db){return new Promise(function(res,rej){
+      var tx=db.transaction('imgs',mode),st=tx.objectStore('imgs'),out=fn(st);
+      tx.oncomplete=function(){res(out&&out.result)};
+      tx.onerror=tx.onabort=function(){rej(tx.error)};
+    })});
+  }
+  function imgPut(id,blob){
+    try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+    return idbDo('readwrite',function(st){st.put(blob,id)}).catch(function(){})}
+  function imgGet(id){return idbDo('readonly',function(st){return st.get(id)}).catch(function(){return null})}
+  /* 어떤 카드에서도 쓰지 않는 이미지는 지운다 */
+  function imgGC(){
+    var used={};state.items.forEach(function(i){if(i.imgId)used[i.imgId]=1});
+    return idbDo('readwrite',function(st){
+      var c=st.openCursor();
+      c.onsuccess=function(){var cur=c.result;if(!cur)return;if(!used[cur.key])cur.delete();cur.continue()};
+    }).catch(function(){});
+  }
+  function newImgId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
+
+  /* persistence (sizes in localStorage, images in IndexedDB) */
   function save(){
     try{
       localStorage.setItem(KEY,JSON.stringify({
-        items:state.items.map(function(i){return {name:i.name,type:i.type,bt:i.bt,w:i.w,h:i.h,bw:i.bw,bwAuto:i.bwAuto,lock:i.lock}}),
+        items:state.items.map(function(i){return {name:i.name,type:i.type,bt:i.bt,w:i.w,h:i.h,bw:i.bw,bwAuto:i.bwAuto,lock:i.lock,imgId:i.imgId||null}}),
         mode:state.mode,real:state.real,gap:state.gap,fit:state.fit,ruler:state.ruler,px:state.px,ms:state.ms,mc:state.mc,mInc:state.mInc
       }));
     }catch(e){}
@@ -404,11 +437,15 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   function renderAll(){renderControls();renderEditor();renderStage();save()}
 
   /* image */
-  function setImage(it,file,done){
+  function setImage(it,file,done,restore){
     var url=URL.createObjectURL(file),im=new Image();
     im.onload=function(){
       it.img=url;it.im=im;it.imgKey=++imgSeq;it.nw=im.naturalWidth;it.nh=im.naturalHeight;
-      if(it.lock){it.h=hFromW(it,it.w)}
+      if(!restore){
+        it.imgId=newImgId();
+        imgPut(it.imgId,file).then(function(){save();imgGC()});
+        if(it.lock){it.h=hFromW(it,it.w)}
+      }
       if(done)done();
     };
     im.onerror=function(){if(done)done()};
@@ -508,11 +545,12 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     if(act==='tcoro')it.type='corotto';
     if(act==='bt3')it.bt=3;
     if(act==='bt5')it.bt=5;
-    if(act==='dup'){var c=mk(it);c.name=it.name+' 복사';c.bwAuto=it.bwAuto;c.img=it.img;c.im=it.im;c.imgKey=it.imgKey;c.nw=it.nw;c.nh=it.nh;c.lock=it.lock;state.items.splice(idx+1,0,c);state.sel=c.id}
+    if(act==='dup'){var c=mk(it);c.name=it.name+' 복사';c.bwAuto=it.bwAuto;c.img=it.img;c.im=it.im;c.imgKey=it.imgKey;c.imgId=it.imgId;c.nw=it.nw;c.nh=it.nh;c.lock=it.lock;state.items.splice(idx+1,0,c);state.sel=c.id}
     if(act==='del'){state.items.splice(idx,1);if(state.sel===id)state.sel=state.items.length?state.items[Math.max(0,idx-1)].id:null}
     if(act==='left'&&idx>0){state.items.splice(idx,1);state.items.splice(idx-1,0,it)}
     if(act==='right'&&idx<state.items.length-1){state.items.splice(idx,1);state.items.splice(idx+1,0,it)}
     renderAll();
+    if(act==='del')imgGC();
   });
 
   /* drag & drop */
@@ -541,6 +579,19 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   else window.addEventListener('resize',onResize);
 
   load();renderAll();
+  /* 저장된 이미지 복원 */
+  (function(){
+    var list=state.items.filter(function(i){return i.imgId});
+    if(!list.length){imgGC();return}
+    var pending=list.length;
+    function one(){if(--pending===0){renderAll();imgGC()}}
+    list.forEach(function(it){
+      imgGet(it.imgId).then(function(b){
+        if(b&&state.items.indexOf(it)>=0&&!it.img)setImage(it,b,one,true);
+        else one()
+      });
+    });
+  })();
 })();
 </script>
 </body>
