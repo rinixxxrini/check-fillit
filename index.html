@@ -14,7 +14,7 @@
 html,body{margin:0;background:var(--bg);color:var(--txt);
   font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;
   -webkit-text-size-adjust:100%}
-body{padding:16px 14px 60px;max-width:1500px;margin:0 auto}
+body{padding:16px 14px 60px;max-width:1900px;margin:0 auto}
 h1{font-size:17px;margin:4px 0 2px;text-align:center;font-weight:700}
 .lead{font-size:12.5px;color:var(--sub);text-align:center;margin:0 0 14px}
 .seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
@@ -80,6 +80,27 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
 .tierln b{color:var(--txt);font-weight:600}
 .tierln.over b{color:#ff8b8f}
 
+/* layout: 미리보기 왼쪽, 굿즈 목록 오른쪽 스크롤 */
+.layout{display:block}
+.mainc{min-width:0}
+@media(max-width:899px){
+  /* 좁은 화면: 미리보기 → 굿즈 목록 → 발주 합계 순서 */
+  .layout{display:flex;flex-direction:column}
+  .mainc{display:contents}
+  .side{order:1}
+  .after{order:2}
+}
+@media(min-width:900px){
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:start}
+  .side{position:sticky;top:10px;max-height:calc(100vh - 20px);overflow-y:auto;overscroll-behavior:contain;
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:0 10px 10px}
+  .side .sidehd{position:sticky;top:0;z-index:2;background:var(--panel);margin:0 -10px 8px;padding:10px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .side #list{grid-template-columns:1fr}
+  .side .card{background:var(--panel2)}
+  .side .card .f input,.side .card input[type=text]{background:var(--bg)}
+}
+@media(min-width:1500px){.layout{grid-template-columns:minmax(0,1fr) 400px}}
+
 /* order summary */
 #order{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:4px}
 .otbl{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums}
@@ -114,6 +135,8 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
 
 
 <h1>아크릴 스탠드 · 코롯토 실물 비율 미리보기</h1>
+<div class="layout">
+<main class="mainc">
 <p class="lead">이미지를 올리고 가로·세로(cm) 또는 가세 합(mm)을 입력하면, 나란히 놓았을 때 실제 비율을 바로 볼 수 있어요.</p>
 
 <div style="text-align:center">
@@ -140,7 +163,16 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
 <div id="stageWrap"><div id="stage"></div></div>
 <div class="info" id="info"></div>
 
-<h2>
+<h2 class="after">
+  <span>발주 수량 합계 (가세 구간별)</span>
+  <span><button class="btn sm" id="btnCopy">복사</button></span>
+</h2>
+<div id="order" class="after"></div>
+<p class="info after" style="margin-top:14px">이미지는 내 브라우저에서만 쓰이고 어디에도 업로드되지 않아요. 사이즈 값과 이미지는 이 브라우저에 저장돼서 새로고침하거나 다시 들어와도 그대로 남아요(다른 기기·브라우저와는 공유되지 않아요).<br>기본은 입력한 가로·세로·가세가 사방 여백까지 포함한 최종 아크릴 크기예요(업체 안내처럼 디자인 크기 = 아크릴 크기 − 사방 여백, 여백은 스탠드 2mm·코롯토 3mm). 그림 크기만 입력하고 여백을 바깥에 더하고 싶다면 "입력 크기에 여백 포함"을 꺼 주세요. 투명 배경 PNG를 올리면 그 여백이 실제 아크릴처럼 흰 테두리로 보여요. 이미지를 화면에 끌어다 놓아도 추가돼요.</p>
+
+</main>
+<aside class="side" id="side">
+<h2 class="sidehd">
   <span>굿즈 목록 (cm)</span>
   <span>
     <button class="btn" id="btnAdd">+ 사이즈 추가</button>
@@ -148,13 +180,8 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   </span>
 </h2>
 <div id="list"></div>
-<p class="info" style="margin-top:14px">이미지는 내 브라우저에서만 쓰이고 어디에도 업로드되지 않아요. 사이즈 값과 이미지는 이 브라우저에 저장돼서 새로고침하거나 다시 들어와도 그대로 남아요(다른 기기·브라우저와는 공유되지 않아요).<br>기본은 입력한 가로·세로·가세가 사방 여백까지 포함한 최종 아크릴 크기예요(업체 안내처럼 디자인 크기 = 아크릴 크기 − 사방 여백, 여백은 스탠드 2mm·코롯토 3mm). 그림 크기만 입력하고 여백을 바깥에 더하고 싶다면 "입력 크기에 여백 포함"을 꺼 주세요. 투명 배경 PNG를 올리면 그 여백이 실제 아크릴처럼 흰 테두리로 보여요. 이미지를 화면에 끌어다 놓아도 추가돼요.</p>
-
-<h2>
-  <span>발주 수량 합계 (가세 구간별)</span>
-  <span><button class="btn sm" id="btnCopy">복사</button></span>
-</h2>
-<div id="order"></div>
+</aside>
+</div>
 
 <input type="file" id="fileAdd" accept="image/*" multiple hidden>
 <input type="file" id="fileRep" accept="image/*" hidden>
@@ -266,16 +293,17 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   function load(){
     var d=null;
     try{d=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){}
-    if(d&&d.items&&d.items.length){
-      state.items=d.items.map(function(i){i.lock=false;return mk(i)});
-      state.items.forEach(function(i,k){i.lock=d.items[k].lock!==false});
+    state.items=[];
+    if(d){
+      if(d.items&&d.items.length){
+        state.items=d.items.map(function(i){i.lock=false;return mk(i)});
+        state.items.forEach(function(i,k){i.lock=d.items[k].lock!==false});
+      }
       ['mode','real','gap','fit','ruler','px','ms','mc','mInc'].forEach(function(k){if(d[k]!==undefined)state[k]=d[k]});
       if(d.tiers&&d.tiers.length)state.tiers=cpT(d.tiers);
       if(d.tiersS&&d.tiersS.length)state.tiersS=cpT(d.tiersS);
-    }else{
-      state.items=[mk({name:'예시 A',w:9.9,h:8.4}),mk({name:'예시 B',type:'corotto',w:7.5,h:8.5}),mk({name:'예시 C',bt:5,w:7.5,h:8.5})];
     }
-    state.sel=state.items[0].id;
+    state.sel=state.items.length?state.items[0].id:null;
   }
 
   /* 칼선(여백) 윤곽: 거리변환으로 정확한 원형 확장 + 오목한 부분 매끈하게 메우기 */
@@ -414,7 +442,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   function renderStage(){
     var wrap=$('#stageWrap'),stage=$('#stage');
     var list=state.mode==='one'?state.items.filter(function(i){return i.id===state.sel}):state.items;
-    if(!list.length){stage.style.height='220px';stage.innerHTML='<div class="empty">굿즈를 추가해 주세요</div>';$('#info').textContent='';return}
+    if(!list.length){stage.style.height='220px';stage.innerHTML='<div class="empty">굿즈를 추가해 주세요<br><small>"+ 사이즈 추가" 또는 "+ 이미지로 추가"를 누르거나, 이미지를 화면에 끌어다 놓으세요</small></div>';$('#info').textContent='';return}
     var real=state.real,g=state.mode==='one'?0:state.gap;
     var isSt=function(i){return i.type!=='corotto'};
     var bhOf=function(i){return (real&&isSt(i))?(i.bt||3)/10:0}; /* 받침 두께 (cm) */
@@ -455,11 +483,11 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       if(acr){
         html+='<img class="acr" src="'+acr+'" alt="" style="left:'+lx+'px;top:0;width:'+iw.toFixed(1)+'px;height:'+ih.toFixed(1)+'px">';
       }else if(real&&!it.img){
-        html+='<div class="img" style="left:'+lx+'px;top:0;width:'+iw.toFixed(1)+'px;height:'+ih.toFixed(1)+'px"><div class="ph">이미지 없음<br>(아래에서 올리기)</div></div>';
+        html+='<div class="img" style="left:'+lx+'px;top:0;width:'+iw.toFixed(1)+'px;height:'+ih.toFixed(1)+'px"><div class="ph">이미지 없음<br>(목록에서 올리기)</div></div>';
       }else{
         if(!real)html+='<div class="cut" style="left:'+lx+'px;top:0;width:'+iw.toFixed(1)+'px;height:'+ih.toFixed(1)+'px"></div>';
         html+='<div class="img" style="left:'+((fw-iw)/2+mm).toFixed(1)+'px;top:'+mm.toFixed(1)+'px;width:'+(iw-2*mm).toFixed(1)+'px;height:'+(ih-2*mm).toFixed(1)+'px">';
-        html+= it.img?'<img src="'+it.img+'" alt="">':'<div class="ph">이미지 없음<br>(아래에서 올리기)</div>';
+        html+= it.img?'<img src="'+it.img+'" alt="">':'<div class="ph">이미지 없음<br>(목록에서 올리기)</div>';
         html+='</div>';
       }
       if(real){
@@ -515,7 +543,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
          +'<button class="btn sm" data-act="right"'+(idx===state.items.length-1?' disabled':'')+'>▶</button>'
          +'<button class="btn sm danger" data-act="del">삭제</button>'
        +'</div></div>';
-    }).join('');
+    }).join('')||'<div class="info" style="padding:24px 8px">아직 굿즈가 없어요. 위 버튼으로 추가해 주세요.</div>';
   }
   function tierHtml(it){
     var t=tierOf(it);
@@ -615,10 +643,19 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       var it=mk({name:f.name.replace(/\.[^.]+$/,''),w:last?last.w:7.5,h:last?last.h:8.5});
       if(firstId===null)firstId=it.id;
       state.items.push(it);
-      setImage(it,f,function(){if(--pending===0){state.sel=firstId;renderAll()}});
+      setImage(it,f,function(){if(--pending===0){state.sel=firstId;renderAll();showSel()}});
     });
   }
 
+  /* 오른쪽 목록 패널에서 선택한 카드가 보이게 스크롤 (패널이 따로 스크롤될 때만) */
+  function showSel(){
+    var side=$('#side');if(!side||side.scrollHeight<=side.clientHeight+1||getComputedStyle(side).overflowY==='visible')return;
+    var c=side.querySelector('.card[data-id="'+state.sel+'"]');if(!c)return;
+    var hd=side.querySelector('.sidehd'),top=hd?hd.offsetHeight:0;
+    var sr=side.getBoundingClientRect(),cr=c.getBoundingClientRect();
+    if(cr.top<sr.top+top)side.scrollTop+=cr.top-sr.top-top-6;
+    else if(cr.bottom>sr.bottom)side.scrollTop+=Math.min(cr.bottom-sr.bottom+6,cr.top-sr.top-top-6);
+  }
   /* events */
   $('#modeSeg').addEventListener('click',function(e){var m=e.target.dataset.m;if(!m)return;state.mode=m;renderAll()});
   $('#fitSeg').addEventListener('click',function(e){var f=e.target.dataset.f;if(!f)return;state.fit=(f==='fit');renderControls();renderStage();save()});
@@ -631,14 +668,14 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   function step(d){
     var i=state.items.findIndex(function(x){return x.id===state.sel});
     if(i<0||!state.items.length)return;
-    state.sel=state.items[(i+d+state.items.length)%state.items.length].id;renderAll();
+    state.sel=state.items[(i+d+state.items.length)%state.items.length].id;renderAll();showSel();
   }
   $('#prev').addEventListener('click',function(){step(-1)});
   $('#next').addEventListener('click',function(){step(1)});
   $('#btnAdd').addEventListener('click',function(){
     var last=state.items[state.items.length-1];
     var it=mk({name:'굿즈 '+(state.items.length+1),w:last?last.w:7.5,h:last?last.h:8.5});
-    state.items.push(it);state.sel=it.id;renderAll();
+    state.items.push(it);state.sel=it.id;renderAll();showSel();
   });
   $('#btnImg').addEventListener('click',function(){$('#fileAdd').click()});
   $('#fileAdd').addEventListener('change',function(e){addFiles(e.target.files);e.target.value=''});
@@ -650,7 +687,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
 
   $('#stage').addEventListener('click',function(e){
     var t=e.target.closest('.item');if(!t)return;
-    state.sel=+t.dataset.id;renderControls();renderEditor();renderStage();
+    state.sel=+t.dataset.id;renderControls();renderEditor();renderStage();showSel();
   });
 
   var list=$('#list');
@@ -709,6 +746,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     if(act==='left'&&idx>0){state.items.splice(idx,1);state.items.splice(idx-1,0,it)}
     if(act==='right'&&idx<state.items.length-1){state.items.splice(idx,1);state.items.splice(idx+1,0,it)}
     renderAll();
+    if(act==='dup')showSel();
     if(act==='del')imgGC();
   });
 
