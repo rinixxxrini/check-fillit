@@ -421,12 +421,18 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
             for(t=yy+1;t<=nn;t++)shape[t*PW+x]=1;
           }
         }
-        /* 2) 좌우 옆면: 아래쪽 35% 안에서 옆으로 가장 튀어나온 곳(가장 넓은 지점)에서 바닥까지 곧게 내려와 채운다.
-              그 위쪽은 윤곽을 그대로 따라간다. (사용자 확인: 업체 시안처럼 옆면이 안으로 파이지 않게) */
+        /* 2) 좌우 옆면: 받침 영역 안에서 옆으로 가장 튀어나온 곳에서 바닥까지 곧게 내려와 채운다(사각형). 그 위는 윤곽을 따라간다. */
         var Lx=new Int32Array(PH).fill(-1),Rx=new Int32Array(PH).fill(-1),yL=-1,yR=-1;
         for(y=0;y<=yb;y++){for(x=0;x<PW;x++)if(shape[y*PW+x]){if(Lx[y]<0)Lx[y]=x;Rx[y]=x}}
-        var yTop=Math.max(0,Math.round(yb-ah*0.35)); /* 업체 가이드·사용자 확인: 하단부(다리·발, 아래 약 35%)에만 사각형을 합침. 그 위 팔·손은 윤곽을 따라감 */
-        for(y=yTop;y<=yb;y++){if(Lx[y]<0)continue;if(yL<0||Lx[y]<Lx[yL])yL=y;if(yR<0||Rx[y]>Rx[yR])yR=y}
+        /* 받침 사각형 크기는 무게중심으로 자동 결정 (사용자 기준):
+           그림의 무게중심(가로)이 발이 닿는 폭 안쪽에 있으면 스스로 서므로 사각형은 발 쪽(F)에만.
+           무게중심이 한쪽으로 쏠려 있으면 그쪽만 아래 35% 안의 가장 튀어나온 곳(들린 발 등)까지 사각형을 넓힌다. */
+        var sx=0,sn=0;for(i=0;i<N;i++)if(mask[i]){sx+=i%PW;sn++}
+        var cx=sn?sx/sn:(xl0+xr0)/2,mg=(xr0-xl0)*0.15;
+        var yF=Math.max(0,yb-F),y35=Math.max(0,Math.round(yb-ah*0.35));
+        var topL=cx<xl0+mg?y35:yF,topR=cx>xr0-mg?y35:yF;
+        for(y=topL;y<=yb;y++){if(Lx[y]>=0&&(yL<0||Lx[y]<Lx[yL]))yL=y}
+        for(y=topR;y<=yb;y++){if(Rx[y]>=0&&(yR<0||Rx[y]>Rx[yR]))yR=y}
         for(y=yL+1;y<=yb;y++){var e=Lx[y]<0?PW:Lx[y];for(x=Lx[yL];x<e;x++)shape[y*PW+x]=1}
         for(y=yR+1;y<=yb;y++){var e2=Rx[y]<0?-1:Rx[y];for(x=e2+1;x<=Rx[yR];x++)shape[y*PW+x]=1}
         /* 바닥 모서리를 둥글게 (열기 연산) — 맨 아래 띠에만 적용.
