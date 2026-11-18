@@ -408,11 +408,10 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       var yb=-1;
       for(y=PH-1;y>=0&&yb<0;y--)for(x=0;x<PW;x++)if(shape[y*PW+x]){yb=y;break}
       if(yb>=0){
-        var B=Math.round(c+ah*0.34),xl=PW,xr=-1,maxFill=PH,yy,nn,t;
-        for(y=Math.max(0,yb-B);y<=yb;y++)for(x=0;x<PW;x++)if(shape[y*PW+x]){if(x<xl)xl=x;if(x>xr)xr=x}
-        /* 각 열에서 아래쪽 영역(B) 안에서 시작하는 빈 틈은 위의 그림까지 모두 메운다.
-           (맨 아래 줄에 이미 테두리가 있는 열도 그 위 틈을 메워야 옆면에 홈이 안 생김) */
-        for(x=xl;x<=xr;x++){
+        /* 1) 발 영역(맨 아래 F) 가로 범위 [xl0,xr0] 안: 다리·발 사이 틈은 아래쪽 영역(B)에서 시작하면 위 그림까지 모두 메움 */
+        var B=Math.round(c+ah*0.34),F=Math.round(r+c+ah*0.08),xl0=PW,xr0=-1,yy,nn,t,x2;
+        for(y=Math.max(0,yb-F);y<=yb;y++)for(x=0;x<PW;x++)if(shape[y*PW+x]){if(x<xl0)xl0=x;if(x>xr0)xr0=x}
+        for(x=xl0;x<=xr0;x++){
           yy=yb;
           while(yy>=yb-B){
             while(yy>=0&&shape[yy*PW+x])yy--;
@@ -422,25 +421,30 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
             for(t=yy+1;t<=nn;t++)shape[t*PW+x]=1;
           }
         }
-        /* 바닥 옆면이 위쪽 윤곽(꼬리·손 등)보다 튀어나와 계단(돌기)이 생기지 않게:
-           아래쪽 영역에서 좌우 윤곽이 안으로 파인 곳을 위·아래 윤곽 중 안쪽 선까지 메워 옆면이 곧게 떨어지게 */
-        var Z=Math.round(r+c+ah*0.3),y0=Math.max(0,yb-Z),nr=yb-y0+1,Lx=new Int32Array(nr),Rx=new Int32Array(nr),j,mA,mB,T;
-        for(j=0;j<nr;j++){y=y0+j;Lx[j]=PW;Rx[j]=-1;for(x=0;x<PW;x++)if(shape[y*PW+x]){if(Lx[j]===PW)Lx[j]=x;Rx[j]=x}}
-        var aL=new Int32Array(nr),bL=new Int32Array(nr),aR=new Int32Array(nr),bR=new Int32Array(nr);
-        for(j=0;j<nr;j++){aL[j]=Math.min(j?aL[j-1]:PW,Lx[j]);aR[j]=Math.max(j?aR[j-1]:-1,Rx[j])}
-        for(j=nr-1;j>=0;j--){bL[j]=Math.min(j<nr-1?bL[j+1]:PW,Lx[j]);bR[j]=Math.max(j<nr-1?bR[j+1]:-1,Rx[j])}
-        for(j=0;j<nr;j++){
-          y=y0+j;
-          T=Math.max(aL[j],bL[j]);if(T<Lx[j]&&Lx[j]<PW)for(x=T;x<Lx[j];x++)shape[y*PW+x]=1;
-          T=Math.min(aR[j],bR[j]);if(T>Rx[j]&&Rx[j]>=0)for(x=Rx[j]+1;x<=T;x++)shape[y*PW+x]=1;
-        }
-        /* 바닥 모서리를 둥글게 (열기 연산) */
+        /* 2) 발 바깥 옆쪽: 아랫면이 아래쪽 영역(B) 안에 있는 튀어나온 부분(들린 발·꼬리 등)이 있으면
+              그 부분의 가장 바깥 끝에서 바닥까지 확실하게 곧게 떨어뜨린다. 없으면 전혀 메우지 않는다(어중간한 반쯤 메움 없음). */
+        var und=function(x){var q=yb;while(q>=0&&shape[q*PW+x])q--;while(q>=0&&!shape[q*PW+x])q--;return q};
+        [-1,1].forEach(function(dir){
+          var x0=dir<0?xl0-1:xr0+1,u=[],xs=null,k,xx;
+          for(xx=x0;xx>=0&&xx<PW;xx+=dir){u.push(und(xx))}
+          for(k=0;k<u.length;k++)if(u[k]>=0&&u[k]>=yb-B)xs=k;
+          if(xs===null)return;
+          /* 같은 부분의 아랫면을 따라 바깥쪽 끝(가장 넓은 곳)까지 넓힘 */
+          while(xs+1<u.length&&u[xs+1]>=0&&u[xs+1]<=u[xs]&&shape[u[xs+1]*PW+(x0+dir*xs)])xs++;
+          var last=yb;
+          for(k=0;k<=xs;k++){
+            xx=x0+dir*k;var top=u[k]>=0?u[k]:last;last=top;
+            for(t=top+1;t<=yb;t++)shape[t*PW+xx]=1;
+          }
+        });
+        /* 바닥 모서리를 둥글게 (열기 연산) — 맨 아래 띠에만 적용.
+           전체에 적용하면 곧게 떨어진 옆면 중 얇은 곳이 깎여 옆면에 홈이 생김 */
         var rc=Math.max(1.5,r*0.5),inv2=new Uint8Array(N),ero=new Uint8Array(N);
         for(i=0;i<N;i++)inv2[i]=shape[i]?0:1;
         var de=edt(inv2,PW,PH);
         for(i=0;i<N;i++)ero[i]=(shape[i]&&de[i]>=rc*rc)?1:0;
         var dg=edt(ero,PW,PH);
-        for(i=0;i<N;i++)shape[i]=dg[i]<=rc*rc?1:0;
+        var yc=yb-Math.ceil(2*rc);for(i=0;i<N;i++)if(i>=yc*PW)shape[i]=dg[i]<=rc*rc?1:0;
       }
     }
 
