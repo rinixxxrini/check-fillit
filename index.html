@@ -433,6 +433,9 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
         var cx=sn?sx/sn:(xl0+xr0)/2,mg=(xr0-xl0)*0.15;
         var yF=Math.max(0,yb-F),y35=Math.max(0,Math.round(yb-ah*0.35));
         var topL=cx<xl0+mg?y35:yF,topR=cx>xr0-mg?y35:yF;
+        /* 발이 떠 있는 그림(빗자루 탄 마녀 등): 바닥에 닿는 폭이 아래 35% 그림 폭의 절반도 안 되면 양쪽 모두 넓힌다 */
+        var bl=PW,br=-1;for(y=y35;y<=yb;y++)for(x=0;x<PW;x++)if(shape[y*PW+x]){if(x<bl)bl=x;if(x>br)br=x}
+        if(topL===yF&&topR===yF&&br>bl&&(xr0-xl0)<(br-bl)*0.5){topL=y35;topR=y35}
         for(y=topL;y<=yb;y++){if(Lx[y]>=0&&(yL<0||Lx[y]<Lx[yL]))yL=y}
         for(y=topR;y<=yb;y++){if(Rx[y]>=0&&(yR<0||Rx[y]>Rx[yR]))yR=y}
         for(y=yL+1;y<=yb;y++){var e=Lx[y]<0?PW:Lx[y];for(x=Lx[yL];x<e;x++)shape[y*PW+x]=1}
