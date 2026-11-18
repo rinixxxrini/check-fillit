@@ -411,6 +411,8 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
         /* 1) 발 영역(맨 아래 F) 가로 범위 [xl0,xr0] 안: 다리·발 사이 틈은 아래쪽 영역(B)에서 시작하면 위 그림까지 모두 메움 */
         var B=Math.round(c+ah*0.34),F=Math.round(r+c+ah*0.08),xl0=PW,xr0=-1,yy,nn,t,x2;
         for(y=Math.max(0,yb-F);y<=yb;y++)for(x=0;x<PW;x++)if(shape[y*PW+x]){if(x<xl0)xl0=x;if(x>xr0)xr0=x}
+        var rL=new Int32Array(PH).fill(PW),rR=new Int32Array(PH).fill(-1);
+        for(y=0;y<=yb;y++)for(x=0;x<PW;x++)if(shape[y*PW+x]){if(x<rL[y])rL[y]=x;rR[y]=x}
         for(x=xl0;x<=xr0;x++){
           yy=yb;
           while(yy>=yb-B){
@@ -418,7 +420,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
             if(yy<0||yy<yb-B)break;
             nn=yy;while(yy>=0&&!shape[yy*PW+x])yy--;
             if(yy<0)break;
-            for(t=yy+1;t<=nn;t++)shape[t*PW+x]=1;
+            for(t=yy+1;t<=nn;t++)if(rL[t]<x&&x<rR[t])shape[t*PW+x]=1; /* 양옆에 그림이 있는 줄(다리 사이 등 안쪽 틈)만 메움 — 바깥 옆면은 메우지 않음 */
           }
         }
         /* 2) 좌우 옆면: 받침 영역 안에서 옆으로 가장 튀어나온 곳에서 바닥까지 곧게 내려와 채운다(사각형). 그 위는 윤곽을 따라간다. */
