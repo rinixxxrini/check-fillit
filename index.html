@@ -410,10 +410,17 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       if(yb>=0){
         var B=Math.round(c+ah*0.34),xl=PW,xr=-1,maxFill=PH,yy,nn,t;
         for(y=Math.max(0,yb-B);y<=yb;y++)for(x=0;x<PW;x++)if(shape[y*PW+x]){if(x<xl)xl=x;if(x>xr)xr=x}
+        /* 각 열에서 아래쪽 영역(B) 안에서 시작하는 빈 틈은 위의 그림까지 모두 메운다.
+           (맨 아래 줄에 이미 테두리가 있는 열도 그 위 틈을 메워야 옆면에 홈이 안 생김) */
         for(x=xl;x<=xr;x++){
-          yy=yb;nn=0;
-          while(yy>=0&&!shape[yy*PW+x]&&nn<maxFill){yy--;nn++}
-          if(yy>=0&&shape[yy*PW+x]&&nn>0)for(t=yy+1;t<=yb;t++)shape[t*PW+x]=1;
+          yy=yb;
+          while(yy>=yb-B){
+            while(yy>=0&&shape[yy*PW+x])yy--;
+            if(yy<0||yy<yb-B)break;
+            nn=yy;while(yy>=0&&!shape[yy*PW+x])yy--;
+            if(yy<0)break;
+            for(t=yy+1;t<=nn;t++)shape[t*PW+x]=1;
+          }
         }
         /* 바닥 옆면이 위쪽 윤곽(꼬리·손 등)보다 튀어나와 계단(돌기)이 생기지 않게:
            아래쪽 영역에서 좌우 윤곽이 안으로 파인 곳을 위·아래 윤곽 중 안쪽 선까지 메워 옆면이 곧게 떨어지게 */
