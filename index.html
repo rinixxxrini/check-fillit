@@ -421,22 +421,14 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
             for(t=yy+1;t<=nn;t++)shape[t*PW+x]=1;
           }
         }
-        /* 2) 발 바깥 옆쪽: 아랫면이 아래쪽 영역(B) 안에 있는 튀어나온 부분(들린 발·꼬리 등)이 있으면
-              그 부분의 가장 바깥 끝에서 바닥까지 확실하게 곧게 떨어뜨린다. 없으면 전혀 메우지 않는다(어중간한 반쯤 메움 없음). */
-        var und=function(x){var q=yb;while(q>=0&&shape[q*PW+x])q--;while(q>=0&&!shape[q*PW+x])q--;return q};
-        [-1,1].forEach(function(dir){
-          var x0=dir<0?xl0-1:xr0+1,u=[],xs=null,k,xx;
-          for(xx=x0;xx>=0&&xx<PW;xx+=dir){u.push(und(xx))}
-          for(k=0;k<u.length;k++)if(u[k]>=0&&u[k]>=yb-B)xs=k;
-          if(xs===null)return;
-          /* 같은 부분의 아랫면을 따라 바깥쪽 끝(가장 넓은 곳)까지 넓힘 */
-          while(xs+1<u.length&&u[xs+1]>=0&&u[xs+1]<=u[xs]&&shape[u[xs+1]*PW+(x0+dir*xs)])xs++;
-          var last=yb;
-          for(k=0;k<=xs;k++){
-            xx=x0+dir*k;var top=u[k]>=0?u[k]:last;last=top;
-            for(t=top+1;t<=yb;t++)shape[t*PW+xx]=1;
-          }
-        });
+        /* 2) 좌우 옆면: 아래쪽 60% 안에서 옆으로 가장 튀어나온 곳(가장 넓은 지점)에서 바닥까지 곧게 내려와 채운다.
+              그 위쪽은 윤곽을 그대로 따라간다. (사용자 확인: 업체 시안처럼 옆면이 안으로 파이지 않게) */
+        var Lx=new Int32Array(PH).fill(-1),Rx=new Int32Array(PH).fill(-1),yL=-1,yR=-1;
+        for(y=0;y<=yb;y++){for(x=0;x<PW;x++)if(shape[y*PW+x]){if(Lx[y]<0)Lx[y]=x;Rx[y]=x}}
+        var yTop=Math.max(0,Math.round(yb-r-ah*0.6)); /* 머리·귀 등 위쪽 60% 밖은 기준에서 제외 (업체 실물: 위쪽은 윤곽을 따라감) */
+        for(y=yTop;y<=yb;y++){if(Lx[y]<0)continue;if(yL<0||Lx[y]<Lx[yL])yL=y;if(yR<0||Rx[y]>Rx[yR])yR=y}
+        for(y=yL+1;y<=yb;y++){var e=Lx[y]<0?PW:Lx[y];for(x=Lx[yL];x<e;x++)shape[y*PW+x]=1}
+        for(y=yR+1;y<=yb;y++){var e2=Rx[y]<0?-1:Rx[y];for(x=e2+1;x<=Rx[yR];x++)shape[y*PW+x]=1}
         /* 바닥 모서리를 둥글게 (열기 연산) — 맨 아래 띠에만 적용.
            전체에 적용하면 곧게 떨어진 옆면 중 얇은 곳이 깎여 옆면에 홈이 생김 */
         var rc=Math.max(1.5,r*0.5),inv2=new Uint8Array(N),ero=new Uint8Array(N);
