@@ -421,11 +421,11 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
             for(t=yy+1;t<=nn;t++)shape[t*PW+x]=1;
           }
         }
-        /* 2) 좌우 옆면: 아래쪽 60% 안에서 옆으로 가장 튀어나온 곳(가장 넓은 지점)에서 바닥까지 곧게 내려와 채운다.
+        /* 2) 좌우 옆면: 아래쪽 35% 안에서 옆으로 가장 튀어나온 곳(가장 넓은 지점)에서 바닥까지 곧게 내려와 채운다.
               그 위쪽은 윤곽을 그대로 따라간다. (사용자 확인: 업체 시안처럼 옆면이 안으로 파이지 않게) */
         var Lx=new Int32Array(PH).fill(-1),Rx=new Int32Array(PH).fill(-1),yL=-1,yR=-1;
         for(y=0;y<=yb;y++){for(x=0;x<PW;x++)if(shape[y*PW+x]){if(Lx[y]<0)Lx[y]=x;Rx[y]=x}}
-        var yTop=Math.max(0,Math.round(yb-r-ah*0.6)); /* 머리·귀 등 위쪽 60% 밖은 기준에서 제외 (업체 실물: 위쪽은 윤곽을 따라감) */
+        var yTop=Math.max(0,Math.round(yb-ah*0.35)); /* 업체 가이드·사용자 확인: 하단부(다리·발, 아래 약 35%)에만 사각형을 합침. 그 위 팔·손은 윤곽을 따라감 */
         for(y=yTop;y<=yb;y++){if(Lx[y]<0)continue;if(yL<0||Lx[y]<Lx[yL])yL=y;if(yR<0||Rx[y]>Rx[yR])yR=y}
         for(y=yL+1;y<=yb;y++){var e=Lx[y]<0?PW:Lx[y];for(x=Lx[yL];x<e;x++)shape[y*PW+x]=1}
         for(y=yR+1;y<=yb;y++){var e2=Rx[y]<0?-1:Rx[y];for(x=e2+1;x<=Rx[yR];x++)shape[y*PW+x]=1}
