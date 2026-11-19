@@ -248,7 +248,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   var KEY='acrylic-size-viewer-v2';
   var coarse=false; try{coarse=matchMedia('(pointer:coarse)').matches}catch(e){}
   var DEF_PX=coarse?63:37.8;
-  var BASE_H=1.0, OVER=0.35, PAD=1.5, TOP=1.0, LABEL_PX=92, RULER_PX=26;
+  var BASE_H=1.0, OVER=0.35, PAD=1.5, TOP=1.0, LABEL_PX=108, RULER_PX=26;
   var uid=1,imgSeq=0;
   /* 업체 옵션: [가로+세로] N mm 이하 구간과 단가(원) — 화면에서 수정 가능 */
   /* 아크릴 스탠드(접합/사각형) 단가: 60~280mm는 업체 표(260 5,600 / 280 6,200),
@@ -512,6 +512,18 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     return it.acr?it.acr.url:null; /* 새로 만드는 동안은 이전 결과(없으면 원본 이미지) */
   }
 
+  /* 그림 아래 라벨 줄: 가로×세로 / 가세 (주문 시 구간) / 디자인 / 여백 */
+  function gsLine(it){var t=tierOf(it);return '가세 '+gsOf(it)+(t?' (주문 시 '+t.mm+')':' (구간 초과)')}
+  function desLine(it){return '디자인 '+fmt(AW(it)-2*M(it))+' × '+fmt(AH(it)-2*M(it))}
+  function marLine(it){return '여백 '+(Math.round(M(it)*100)/10)+'mm'}
+  var mctx=null;
+  function labW(it){ /* 화면 라벨 글자 너비(px) */
+    if(!mctx){mctx=document.createElement('canvas').getContext('2d')}
+    var F=getComputedStyle(document.body).fontFamily;
+    mctx.font='600 14px '+F;var a=mctx.measureText(fmt(it.w)+' × '+fmt(it.h)).width;
+    mctx.font='12px '+F;var b=Math.max(mctx.measureText(gsLine(it)).width,mctx.measureText(desLine(it)).width,E(it)>0?mctx.measureText('아크릴 '+fmt(AW(it))+' × '+fmt(AH(it))+' (가세'+agsOf(it)+')').width:0);
+    return Math.ceil(Math.max(a,b))+12;
+  }
   /* stage */
   function renderStage(){
     var wrap=$('#stageWrap'),stage=$('#stage');
@@ -523,7 +535,10 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     var isSt=function(i){return i.type!=='corotto'};
     var bhOf=function(i){return (real&&isSt(i))?(i.bt||3)/10:0}; /* 받침 두께 (cm) */
     var bwOf=function(i){return (real&&isSt(i))?Math.max(AW(i),i.bwAuto?AW(i):i.bw):AW(i)};
-    var foot=function(i){return Math.max(AW(i),bwOf(i))};
+    var foot0=function(i){return Math.max(AW(i),bwOf(i))};
+    var LWc={};list.forEach(function(i){LWc[i.id]=labW(i)});
+    var sS=1e9; /* 라벨이 옆 라벨과 겹치지 않게: 칸 너비 = max(실물 가로, 라벨 너비/배율). 눈금자를 켜면 실제 간격 그대로 */
+    var foot=function(i){return state.ruler?foot0(i):Math.max(foot0(i),LWc[i.id]/sS)};
     var rows=state.mode==='one'?[list]:normRows(list);
     var rowW=function(r){return r.reduce(function(a,i){return a+foot(i)},0)+g*(r.length-1)};
     var rowH=function(r){return Math.max.apply(null,r.map(function(i){return AH(i)+bhOf(i)}))};
@@ -534,7 +549,12 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     var s;
     if(state.fit){
       s=Math.max(2,Math.min(availW/fullCm,(coarse?340:520)/(maxH+TOP)));
+      /* 라벨 칸까지 화면에 들어가게 조금 줄이되, 너무 작아지면(좁은 화면) 줄이지 않고 옆으로 스크롤 */
+      var sMin=s*0.6;
+      for(var it2=0;it2<8;it2++){sS=s;totalCm=Math.max.apply(null,rows.map(rowW));fullCm=totalCm+PAD*2;var s2=Math.max(sMin,Math.min(availW/fullCm,(coarse?340:520)/(maxH+TOP)));if(s2>=s-0.01)break;s=s2}
+      sS=s;
     }else s=state.px;
+    sS=s;totalCm=Math.max.apply(null,rows.map(rowW));fullCm=totalCm+PAD*2;
     var stageW=Math.max(availW,fullCm*s);
     var floorH=LABEL_PX+(state.ruler?RULER_PX:0);
     var tagHtml='<div class="tag">실제 비율'+(real&&state.tab==='stand'?' · 스탠드 받침은 3/5mm 두께 반영':'')+(state.mode==='side'?' · 끌어서 순서·줄 바꾸기':'')+'</div>';
@@ -547,11 +567,11 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     var x=x0;
     row.forEach(function(it){
       var st=isSt(it);
-      var fw=foot(it)*s, iw=AW(it)*s, ih=AH(it)*s;
+      var sw0=foot(it)*s, fw=foot0(it)*s, iw=AW(it)*s, ih=AH(it)*s, ox=(sw0-fw)/2;
       var bw=bwOf(it)*s, bh=bhOf(it)*s;
       var cH=ih+bh;
       var top=floorY-cH; /* 받침(또는 코롯토 바닥)이 바닥선에 닿음 */
-      html+='<div class="item'+(real?' real':'')+(it.id===state.sel&&state.mode==='side'?' sel':'')+'" data-id="'+it.id+'" style="left:'+x.toFixed(1)+'px;top:'+top.toFixed(1)+'px;width:'+fw.toFixed(1)+'px;height:'+cH.toFixed(1)+'px">';
+      html+='<div class="item'+(real?' real':'')+(it.id===state.sel&&state.mode==='side'?' sel':'')+'" data-id="'+it.id+'" style="left:'+(x+ox).toFixed(1)+'px;top:'+top.toFixed(1)+'px;width:'+fw.toFixed(1)+'px;height:'+cH.toFixed(1)+'px">';
       var mm=Math.max(0,Math.min(M(it)*s,iw/2-2,ih/2-2));
       var lx=((fw-iw)/2).toFixed(1);
       var acr=(real&&it.img)?acrUrl(it):null;
@@ -571,9 +591,9 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
         if(st)html+='<div class="base" style="left:'+((fw-bw)/2).toFixed(1)+'px;top:'+ih.toFixed(1)+'px;width:'+bw.toFixed(1)+'px;height:'+Math.max(2,bh).toFixed(1)+'px"></div>';
       }
       html+='</div>';
-      var lw=Math.max(fw,150);
-      html+='<div class="lab" style="left:'+(x+fw/2-lw/2).toFixed(1)+'px;top:'+(floorY+10)+'px;width:'+lw.toFixed(1)+'px"><b>'+fmt(it.w)+' × '+fmt(it.h)+' · 가세'+gsOf(it)+'</b>'+(st?'<span>받침 '+(it.bt||3)+'mm</span>':'')+(E(it)>0?'<span>아크릴 '+fmt(AW(it))+' × '+fmt(AH(it))+' (가세'+Math.round(AW(it)*10+AH(it)*10)+')</span>':'')+'<span>디자인 '+fmt(AW(it)-2*M(it))+' × '+fmt(AH(it)-2*M(it))+'</span><span>여백 '+(Math.round(M(it)*100)/10)+'mm</span>'+'</div>';
-      x+=fw+g*s;
+      var lw=Math.max(sw0,LWc[it.id]);
+      html+='<div class="lab" style="left:'+(x+sw0/2-lw/2).toFixed(1)+'px;top:'+(floorY+10)+'px;width:'+lw.toFixed(1)+'px"><b>'+fmt(it.w)+' × '+fmt(it.h)+'</b><span>'+gsLine(it)+'</span>'+(E(it)>0?'<span>아크릴 '+fmt(AW(it))+' × '+fmt(AH(it))+' (가세'+agsOf(it)+')</span>':'')+'<span>'+desLine(it)+'</span><span>'+marLine(it)+'</span>'+(st?'<span>받침 '+(it.bt||3)+'mm</span>':'')+'</div>';
+      x+=sw0+g*s;
     });
       if(state.ruler){
         var ry=floorY+LABEL_PX;
@@ -637,7 +657,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   /* 접힌 줄에 보이는 한 줄 요약: 가로×세로 · 가세 · 종류 · 수량 · 금액 */
   function sumHtml(it){
     var t=tierOf(it);
-    return '<b>'+fmt(it.w)+'×'+fmt(it.h)+'</b> · 가세'+gsOf(it)
+    return '<b>'+fmt(it.w)+'×'+fmt(it.h)+'</b> · 가세'+gsOf(it)+(t?'(주문 '+t.mm+')':'')
       +' · '+(it.type==='corotto'?'코롯토':'스탠드 '+(it.bt||3)+'mm')
       +' · '+it.qty+'개'
       +(t&&t.p?' · '+won(t.p*it.qty):(t?'':' · <em>구간 초과</em>'));
@@ -694,7 +714,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       gs.forEach(function(r){
         var p=r.t?r.t.p:0;tq+=r.qty;if(p)tp+=p*r.qty;else allP=false;
         h+='<tr><td>'+esc(r.label)
-          +'<div class="names">'+r.items.map(function(i){return esc(i.name)+' ('+agsOf(i)+'mm) '+i.qty+'개'}).join(', ')+'</div>'
+          +'<div class="names">'+r.items.map(function(i){return esc(i.name)+' (가세 '+gsOf(i)+(r.t?' → 주문 '+r.t.mm:'')+') '+i.qty+'개'}).join(', ')+'</div>'
           +(r.t?'':'<div class="warn">업체 옵션 중 가장 큰 구간보다 커요. 사이즈를 줄이거나 아래 설정에서 구간을 추가해 주세요.</div>')
           +(r.t&&r.qty>50?'<div class="warn">50개를 넘어요. 업체 수량구간(1~50개)을 확인해 주세요.</div>':'')
           +'</td><td class="n"><b>'+r.qty+'개</b></td><td class="n">'+(p?won(p)+(r.t.est?'<div class="names">추정</div>':''):'-')+'</td><td class="n">'+(p?won(p*r.qty):'-')+'</td></tr>';
@@ -712,7 +732,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   }
   function orderText(){
     return orderGroups().map(function(r){
-      return r.label+' : '+r.qty+'개'+(r.t&&r.t.p?' ('+won(r.t.p*r.qty)+')':'')+'\n  - '+r.items.map(function(i){return i.name+' '+i.qty+'개'}).join('\n  - ');
+      return r.label+' : '+r.qty+'개'+(r.t&&r.t.p?' ('+won(r.t.p*r.qty)+')':'')+'\n  - '+r.items.map(function(i){return i.name+' (가세 '+gsOf(i)+(r.t?' → 주문 '+r.t.mm:'')+') '+i.qty+'개'}).join('\n  - ');
     }).join('\n');
   }
   function renderAll(){renderControls();renderEditor();renderStage();renderOrder();save()}
@@ -995,10 +1015,10 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   function exportPng(done){
     var V=vis();if(!V.length){done(false);return}
     var rows=normRows(V),S=Math.max(30,Math.min(80,3600/Math.max.apply(null,rows.map(function(r){return r.reduce(function(t,i){return t+AW(i)+0.5},0)})))),F=$('body')?getComputedStyle(document.body).fontFamily:'sans-serif';
-    var PADX=48,PADY=40,LG=14,L1=24,L2=21,LH=L1+L2+18,MINGAP=24;
+    var PADX=48,PADY=40,LG=14,L1=24,L2=21,LH=L1+L2*3+30,MINGAP=24;
     var c=document.createElement('canvas').getContext('2d');
-    function tx(it){return ['디자인 '+fmt(AW(it)-2*M(it))+' × '+fmt(AH(it)-2*M(it))+'cm','여백 '+(Math.round(M(it)*100)/10)+'mm']}
-    function slotW(it){var t=tx(it);c.font='600 '+L1+'px '+F;var a=c.measureText(t[0]).width;c.font=L2+'px '+F;var b=c.measureText(t[1]).width;return Math.max(AW(it)*S,a+8,b+8)}
+    function tx(it){return [fmt(it.w)+' × '+fmt(it.h),gsLine(it),desLine(it),marLine(it)]}
+    function slotW(it){var t=tx(it);c.font='600 '+L1+'px '+F;var a=c.measureText(t[0]).width;c.font=L2+'px '+F;var b=Math.max(c.measureText(t[1]).width,c.measureText(t[2]).width,c.measureText(t[3]).width);return Math.max(AW(it)*S,a+16,b+16)}
     var gap=Math.max(MINGAP,state.gap*S);
     var lay=rows.map(function(r){
       var ws=r.map(slotW),w=ws.reduce(function(a,b){return a+b},0)+gap*(r.length-1);
@@ -1025,7 +1045,8 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
         o.restore();
         var t=tx(it);
         o.fillStyle='#1a1a1a';o.font='600 '+L1+'px '+F;o.fillText(t[0],cx,fy+LG);
-        o.fillStyle='#4a4f5a';o.font=L2+'px '+F;o.fillText(t[1],cx,fy+LG+L1+8);
+        o.fillStyle='#3d424e';o.font=L2+'px '+F;
+        for(var q=1;q<4;q++)o.fillText(t[q],cx,fy+LG+L1+8+(q-1)*(L2+7));
         x+=l.ws[k]+gap;
       });
       y=fy+LG+LH+PADY;
