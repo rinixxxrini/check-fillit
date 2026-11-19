@@ -254,7 +254,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   var KEY='acrylic-size-viewer-v2';
   var coarse=false; try{coarse=matchMedia('(pointer:coarse)').matches}catch(e){}
   var DEF_PX=coarse?63:37.8;
-  var BASE_H=1.0, OVER=0.35, PAD=1.5, TOP=1.0, LABEL_PX=108, RULER_PX=26;
+  var BASE_H=1.0, OVER=0.35, PAD=1.5, TOP=1.0, LABEL_PX=122, RULER_PX=26;
   var uid=1,imgSeq=0;
   /* 업체 옵션: [가로+세로] N mm 이하 구간과 단가(원) — 화면에서 수정 가능 */
   /* 아크릴 스탠드(접합/사각형) 단가: 60~280mm는 업체 표(260 5,600 / 280 6,200),
@@ -523,6 +523,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   function gsLine(it){var t=tierOf(it);return '가세 '+gsOf(it)+(t?' (주문 시 '+t.mm+')':' (구간 초과)')}
   function desLine(it){return '디자인 '+fmt(AW(it)-2*M(it))+' × '+fmt(AH(it)-2*M(it))}
   function marLine(it){return '여백 '+(Math.round(M(it)*100)/10)+'mm'}
+  function priceLine(it){var t=tierOf(it);return t&&t.p?'개당 '+won(t.p)+(t.est?' (추정)':''):''}
   var mctx=null;
   function labW(it){ /* 화면 라벨 글자 너비(px) */
     if(!mctx){mctx=document.createElement('canvas').getContext('2d')}
@@ -599,7 +600,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       }
       html+='</div>';
       var lw=Math.max(sw0,LWc[it.id]);
-      html+='<div class="lab" style="left:'+(x+sw0/2-lw/2).toFixed(1)+'px;top:'+(floorY+10)+'px;width:'+lw.toFixed(1)+'px"><b>'+fmt(it.w)+' × '+fmt(it.h)+'</b><span>'+gsLine(it)+'</span>'+(E(it)>0?'<span>아크릴 '+fmt(AW(it))+' × '+fmt(AH(it))+' (가세'+agsOf(it)+')</span>':'')+'<span>'+desLine(it)+'</span><span>'+marLine(it)+'</span>'+(st?'<span>받침 '+(it.bt||3)+'mm</span>':'')+'</div>';
+      html+='<div class="lab" style="left:'+(x+sw0/2-lw/2).toFixed(1)+'px;top:'+(floorY+10)+'px;width:'+lw.toFixed(1)+'px"><b>'+fmt(it.w)+' × '+fmt(it.h)+'</b><span>'+gsLine(it)+'</span>'+(E(it)>0?'<span>아크릴 '+fmt(AW(it))+' × '+fmt(AH(it))+' (가세'+agsOf(it)+')</span>':'')+'<span>'+desLine(it)+'</span><span>'+marLine(it)+'</span>'+(priceLine(it)?'<span>'+priceLine(it)+'</span>':'')+(st?'<span>받침 '+(it.bt||3)+'mm</span>':'')+'</div>';
       x+=sw0+g*s;
     });
       if(state.ruler){
@@ -1022,9 +1023,9 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   function exportPng(done){
     var V=vis();if(!V.length){done(false);return}
     var rows=normRows(V),S=Math.max(30,Math.min(80,3600/Math.max.apply(null,rows.map(function(r){return r.reduce(function(t,i){return t+AW(i)+0.5},0)})))),F=$('body')?getComputedStyle(document.body).fontFamily:'sans-serif';
-    var PADX=48,PADY=40,LG=14,L1=24,L2=21,LH=L1+L2*3+30,MINGAP=24;
+    var PADX=48,PADY=40,LG=14,L1=24,L2=21,LH=L1+L2*4+37,MINGAP=24;
     var c=document.createElement('canvas').getContext('2d');
-    function tx(it){return [fmt(it.w)+' × '+fmt(it.h),gsLine(it),desLine(it),marLine(it)]}
+    function tx(it){return [fmt(it.w)+' × '+fmt(it.h),gsLine(it),desLine(it),marLine(it),priceLine(it)]}
     function slotW(it){var t=tx(it);c.font='600 '+L1+'px '+F;var a=c.measureText(t[0]).width;c.font=L2+'px '+F;var b=Math.max(c.measureText(t[1]).width,c.measureText(t[2]).width,c.measureText(t[3]).width);return Math.max(AW(it)*S,a+16,b+16)}
     var gap=Math.max(MINGAP,state.gap*S);
     var lay=rows.map(function(r){
@@ -1053,7 +1054,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
         var t=tx(it);
         o.fillStyle='#1a1a1a';o.font='600 '+L1+'px '+F;o.fillText(t[0],cx,fy+LG);
         o.fillStyle='#3d424e';o.font=L2+'px '+F;
-        for(var q=1;q<4;q++)o.fillText(t[q],cx,fy+LG+L1+8+(q-1)*(L2+7));
+        for(var q=1;q<t.length;q++)if(t[q])o.fillText(t[q],cx,fy+LG+L1+8+(q-1)*(L2+7));
         x+=l.ws[k]+gap;
       });
       y=fy+LG+LH+PADY;
