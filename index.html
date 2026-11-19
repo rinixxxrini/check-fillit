@@ -196,6 +196,8 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   </div>
   <button class="btn" id="btnCal">화면 보정</button>
   <button class="btn" id="btnExp" title="지금 탭의 굿즈를 나란히 놓은 이미지(PNG)로 저장해요. 그림 아래에는 디자인 크기와 여백만 적혀요.">이미지로 저장</button>
+  <button class="btn" id="btnWSave" title="모든 굿즈(두 탭)·이미지·설정을 파일 하나로 내려받아요. 다른 컴퓨터에서 '작업 불러오기'로 열 수 있어요.">작업 파일 저장</button>
+  <button class="btn" id="btnWLoad" title="'작업 파일 저장'으로 받은 파일을 열어요. 지금 화면의 작업은 그 파일 내용으로 바뀌어요.">작업 불러오기</button>
   <span id="navOne" style="display:none"><button class="btn sm" id="prev">◀</button> <button class="btn sm" id="next">▶</button></span>
 </div>
 
@@ -207,7 +209,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   <span><button class="btn sm" id="btnCopy">복사</button></span>
 </h2>
 <div id="order" class="after"></div>
-<p class="info after" style="margin-top:14px">이미지는 내 브라우저에서만 쓰이고 어디에도 업로드되지 않아요. 사이즈 값과 이미지는 이 브라우저에 저장돼서 새로고침하거나 다시 들어와도 그대로 남아요(다른 기기·브라우저와는 공유되지 않아요).<br>기본은 입력한 가로·세로·가세가 사방 여백까지 포함한 최종 아크릴 크기예요(업체 안내처럼 디자인 크기 = 아크릴 크기 − 사방 여백, 여백은 스탠드 2mm·코롯토 3mm). 그림 크기만 입력하고 여백을 바깥에 더하고 싶다면 "입력 크기에 여백 포함"을 꺼 주세요. 투명 배경 PNG를 올리면 그 여백이 실제 아크릴처럼 흰 테두리로 보여요. 이미지를 화면에 끌어다 놓아도 추가돼요.</p>
+<p class="info after" style="margin-top:14px">이미지는 내 브라우저에서만 쓰이고 어디에도 업로드되지 않아요. 사이즈 값과 이미지는 이 브라우저에 저장돼서 새로고침하거나 다시 들어와도 그대로 남아요(다른 기기·브라우저와는 자동으로 공유되지 않아요). 다른 컴퓨터에서 이어서 하려면 "작업 파일 저장"으로 파일을 받아 카톡·메일·USB 등으로 옮긴 뒤, 그 컴퓨터에서 "작업 불러오기"로 열어 주세요.<br>기본은 입력한 가로·세로·가세가 사방 여백까지 포함한 최종 아크릴 크기예요(업체 안내처럼 디자인 크기 = 아크릴 크기 − 사방 여백, 여백은 스탠드 2mm·코롯토 3mm). 그림 크기만 입력하고 여백을 바깥에 더하고 싶다면 "입력 크기에 여백 포함"을 꺼 주세요. 투명 배경 PNG를 올리면 그 여백이 실제 아크릴처럼 흰 테두리로 보여요. 이미지를 화면에 끌어다 놓아도 추가돼요.</p>
 
 </main>
 <aside class="side" id="side">
@@ -224,6 +226,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
 
 <input type="file" id="fileAdd" accept="image/*" multiple hidden>
 <input type="file" id="fileRep" accept="image/*" hidden>
+<input type="file" id="fileWork" hidden>
 <div class="drop" id="drop">이미지를 놓아서 추가</div>
 
 <div id="modal">
@@ -341,13 +344,14 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   function newImgId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
 
   /* persistence (sizes in localStorage, images in IndexedDB) */
-  function save(){
-    try{
-      localStorage.setItem(KEY,JSON.stringify({
+  function snap(){
+    return {
         items:state.items.map(function(i){return {name:i.name,type:i.type,bt:i.bt,w:i.w,h:i.h,bw:i.bw,bwAuto:i.bwAuto,lock:i.lock,imgId:i.imgId||null,qty:i.qty,row:i.row}}),
         tab:state.tab,mode:state.mode,real:state.real,gap:state.gap,fit:state.fit,ruler:state.ruler,px:state.px,ms:state.ms,mc:state.mc,mInc:state.mInc,tiers:state.tiers,tiersS:state.tiersS
-      }));
-    }catch(e){}
+      };
+  }
+  function save(){
+    try{localStorage.setItem(KEY,JSON.stringify(snap()))}catch(e){}
   }
   function load(){
     var d=null;
@@ -1067,6 +1071,53 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       catch(e){b.disabled=false;b.textContent='이미지로 저장';alert('이미지를 만들지 못했어요')}
     },30);
   });
+  /* 작업 파일: 다른 컴퓨터로 옮기기 위해 사이즈·설정·이미지 원본을 JSON 파일 하나로 저장/불러오기 */
+  var WORK_APP='acrylic-size-viewer-work';
+  function blobToUrl(b){return new Promise(function(res){var r=new FileReader();r.onload=function(){res(r.result)};r.onerror=function(){res(null)};r.readAsDataURL(b)})}
+  function urlToBlob(u){
+    var m=/^data:([^;,]*)(;base64)?,(.*)$/.exec(u||'');if(!m)return null;
+    var bin=m[2]?atob(m[3]):decodeURIComponent(m[3]),a=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i);
+    return new Blob([a],{type:m[1]||'image/png'});
+  }
+  function ymd(){var d=new Date(),p=function(n){return (n<10?'0':'')+n};return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes())}
+  function saveWork(done){
+    save();
+    var data=snap(),ids=[];
+    data.items.forEach(function(i){if(i.imgId&&ids.indexOf(i.imgId)<0)ids.push(i.imgId)});
+    Promise.all(ids.map(function(id){return imgGet(id).then(function(b){return b?blobToUrl(b):null})})).then(function(urls){
+      var imgs={};ids.forEach(function(id,k){if(urls[k])imgs[id]=urls[k]});
+      var txt=JSON.stringify({app:WORK_APP,v:1,saved:new Date().toISOString(),data:data,imgs:imgs});
+      var u=URL.createObjectURL(new Blob([txt],{type:'application/json'})),a=document.createElement('a');
+      a.href=u;a.download='아크릴작업_'+ymd()+'.json';document.body.appendChild(a);a.click();a.remove();
+      setTimeout(function(){URL.revokeObjectURL(u)},4000);done(true);
+    }).catch(function(){done(false)});
+  }
+  function loadWork(file){
+    var r=new FileReader();
+    r.onload=function(){
+      var w=null;try{w=JSON.parse(r.result)}catch(e){}
+      if(!w||w.app!==WORK_APP||!w.data||!w.data.items){alert('작업 파일이 아니에요. "작업 파일 저장"으로 받은 .json 파일을 골라 주세요.');return}
+      var n=w.data.items.length;
+      if(state.items.length&&!confirm('작업 파일을 불러올까요? (굿즈 '+n+'개)\n지금 이 화면의 작업은 파일 내용으로 바뀌어요.'))return;
+      var imgs=w.imgs||{},ps=[];
+      Object.keys(imgs).forEach(function(id){var b=null;try{b=urlToBlob(imgs[id])}catch(e){}if(b)ps.push(imgPut(id,b))});
+      Promise.all(ps).then(function(){
+        try{localStorage.setItem(KEY,JSON.stringify(w.data))}catch(e){alert('저장 공간이 부족해서 불러오지 못했어요');return}
+        location.reload();
+      });
+    };
+    r.readAsText(file);
+  }
+  $('#btnWSave').addEventListener('click',function(){
+    var b=$('#btnWSave');if(b.disabled)return;
+    if(!state.items.length){alert('저장할 굿즈가 없어요');return}
+    b.disabled=true;b.textContent='저장 중…';
+    saveWork(function(ok){b.disabled=false;b.textContent='작업 파일 저장';if(!ok)alert('작업 파일을 만들지 못했어요')});
+  });
+  $('#btnWLoad').addEventListener('click',function(){$('#fileWork').value='';$('#fileWork').click()});
+  $('#fileWork').addEventListener('change',function(e){var f=e.target.files&&e.target.files[0];if(f)loadWork(f)});
+
   $('#btnCal').addEventListener('click',function(){$('#calRange').value=state.px;calDraw();$('#modal').classList.add('open')});
   $('#calRange').addEventListener('input',calDraw);
   $('#calReset').addEventListener('click',function(){$('#calRange').value=DEF_PX;calDraw()});
