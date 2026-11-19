@@ -37,8 +37,14 @@ input[type=checkbox]{accent-color:var(--accent-d);width:16px;height:16px}
 /* stage */
 #stageWrap{overflow-x:auto;overflow-y:hidden;border-radius:12px;background:#cfd3da;border:1px solid var(--line);position:relative}
 #stage{position:relative;min-width:100%}
-/* 줄마다 따로 가로 스크롤 */
-.srow{position:absolute;left:0;right:0;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain}
+/* 줄마다 따로 가로 스크롤 (스크롤바는 숨기고 ◀ ▶ 버튼·휠·스와이프로 이동) */
+.srow{position:absolute;left:0;right:0;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none}
+.srow::-webkit-scrollbar{display:none}
+/* 줄이 화면보다 넓으면 양옆 ◀ ▶ 버튼으로 그 줄만 이동 */
+.rnav{position:absolute;z-index:35;width:34px;height:52px;margin-top:-26px;border:1px solid var(--line);background:rgba(255,255,255,.9);color:var(--txt);font-size:16px;cursor:pointer;box-shadow:0 2px 6px rgba(30,35,50,.15);display:flex;align-items:center;justify-content:center;padding:0}
+.rnav.l{left:6px;border-radius:0 10px 10px 0}.rnav.r{right:6px;border-radius:10px 0 0 10px}
+.rnav:disabled{opacity:0;pointer-events:none}
+#stage.dragRow .rnav{display:none}
 .srin{position:relative;height:100%}
 #stage.dragRow .srow{overflow:visible}
 #stage.dragRow .srow.from{z-index:40}
@@ -674,7 +680,19 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     stage.style.width=stageW+'px';stage.style.height=rowY+'px';
     stage.classList.toggle('multi',multiOn&&state.mode==='side');
     stage.innerHTML=html+tagHtml;
-    [].forEach.call(stage.querySelectorAll('.srow'),function(r,i){if(rowSL[i])r.scrollLeft=rowSL[i]});
+    [].forEach.call(stage.querySelectorAll('.srow'),function(r,i){
+      if(rowSL[i])r.scrollLeft=rowSL[i];
+      if(r.scrollWidth<=r.clientWidth+1)return;
+      var my=parseFloat(r.style.top)+r.querySelector('.wall').offsetHeight/2;
+      var bl=document.createElement('button'),br=document.createElement('button');
+      bl.className='rnav l';bl.textContent='◀';bl.title='이 줄 왼쪽 보기';br.className='rnav r';br.textContent='▶';br.title='이 줄 오른쪽 보기';
+      bl.style.top=br.style.top=my+'px';
+      bl.onclick=function(e){e.stopPropagation();r.scrollBy({left:-r.clientWidth*0.8,behavior:'smooth'})};
+      br.onclick=function(e){e.stopPropagation();r.scrollBy({left:r.clientWidth*0.8,behavior:'smooth'})};
+      function upd(){bl.disabled=r.scrollLeft<=1;br.disabled=r.scrollLeft>=r.scrollWidth-r.clientWidth-1}
+      r.addEventListener('scroll',upd,{passive:true});upd();
+      stage.appendChild(bl);stage.appendChild(br);
+    });
     var pct=Math.round(s/state.px*100);
     $('#info').textContent=state.fit
       ? '화면 맞춤 · 실제 크기의 약 '+pct+'% (물건끼리의 비율은 정확해요) · 실제 크기로 보려면 "실제 크기"를 누르세요'
