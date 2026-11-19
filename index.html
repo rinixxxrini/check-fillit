@@ -22,6 +22,7 @@ h1{font-size:17px;margin:4px 0 2px;text-align:center;font-weight:700}
 .seg button.on{background:var(--accent);color:var(--txt);font-weight:600}
 .bar{display:flex;flex-wrap:wrap;gap:10px 18px;justify-content:center;align-items:center;margin:12px 0}
 .bar label{display:flex;align-items:center;gap:7px;font-size:13.5px;color:var(--txt)}
+.filebar{margin-top:-2px;gap:8px}
 .bar .val{color:var(--sub);min-width:46px;font-variant-numeric:tabular-nums}
 input[type=range]{width:140px;accent-color:var(--accent-d)}
 input[type=checkbox]{accent-color:var(--accent-d);width:16px;height:16px}
@@ -195,10 +196,12 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     <button data-f="real">실제 크기</button>
   </div>
   <button class="btn" id="btnCal">화면 보정</button>
+  <span id="navOne" style="display:none"><button class="btn sm" id="prev">◀</button> <button class="btn sm" id="next">▶</button></span>
+</div>
+<div class="bar filebar">
   <button class="btn" id="btnExp" title="지금 탭의 굿즈를 나란히 놓은 이미지(PNG)로 저장해요. 그림 아래에는 디자인 크기와 여백만 적혀요.">이미지로 저장</button>
   <button class="btn" id="btnWSave" title="모든 굿즈(두 탭)·이미지·설정을 파일 하나로 내려받아요. 다른 컴퓨터에서 '작업 불러오기'로 열 수 있어요.">작업 파일 저장</button>
   <button class="btn" id="btnWLoad" title="'작업 파일 저장'으로 받은 파일을 열어요. 지금 화면의 작업은 그 파일 내용으로 바뀌어요.">작업 불러오기</button>
-  <span id="navOne" style="display:none"><button class="btn sm" id="prev">◀</button> <button class="btn sm" id="next">▶</button></span>
 </div>
 
 <div id="stageWrap"><div id="stage"></div></div>
