@@ -49,6 +49,13 @@ input[type=checkbox]{accent-color:var(--accent-d);width:16px;height:16px}
 .grip{flex:none;color:#a0a0a8;font-size:15px;line-height:1;padding:8px 2px;cursor:grab;touch-action:none;user-select:none}
 .chd{user-select:none}
 .item.sel{outline:2px dashed var(--accent-d);outline-offset:6px;border-radius:2px}
+.item.msel{outline:2px solid var(--accent-d);outline-offset:6px;border-radius:2px;background:rgba(192,206,218,.35)}
+#stage.multi .item{touch-action:none} /* 여러 개 선택 중: 터치로 눌러 담기 */
+#stage{-webkit-user-select:none;user-select:none}
+.bundle{position:absolute;z-index:25;background:#fff;border:2px solid var(--accent-d);border-radius:10px;padding:6px 26px 6px 10px;font-size:12px;line-height:1.45;color:var(--txt);box-shadow:0 3px 10px rgba(30,35,50,.18);white-space:nowrap}
+.bundle b{font-size:15px;display:block}
+.bundle small{color:#666;display:block}
+.bundle .bx{position:absolute;right:4px;top:3px;border:0;background:none;font-size:15px;line-height:1;color:#777;cursor:pointer;padding:2px 4px}
 .cut{position:absolute;border:1px dashed rgba(60,66,80,.55);border-radius:3px}
 .img{position:absolute;display:flex;align-items:flex-end;justify-content:center}
 .img img{width:100%;height:100%;object-fit:contain;object-position:center bottom;display:block;pointer-events:none;-webkit-user-drag:none}
@@ -189,6 +196,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   <label><input type="checkbox" id="chkReal"> 실물처럼 보기</label>
   <label id="gapLbl">간격 <input type="range" id="gap" min="0" max="5" step="0.1"><span class="val" id="gapVal"></span></label>
   <label><input type="checkbox" id="chkRuler"> 눈금자</label>
+  <label id="multiLbl" title="묶음 가격 보기: 켜면 그림을 누를 때마다 묶음에 담기거나 빠져요. PC에서는 Shift(또는 Ctrl/⌘)를 누른 채 클릭해도 돼요."><input type="checkbox" id="chkMulti"> 여러 개 선택</label>
   <label><input type="checkbox" id="chkInc"> 입력 크기에 여백 포함</label>
   <label>사방 여백 스탠드 <input type="number" id="msIn" class="num" min="0" max="20" step="0.5" inputmode="decimal"> mm · 코롯토 <input type="number" id="mcIn" class="num" min="0" max="20" step="0.5" inputmode="decimal"> mm</label>
   <div class="seg" id="fitSeg">
@@ -532,6 +540,23 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     mctx.font='12px '+F;var b=Math.max(mctx.measureText(gsLine(it)).width,mctx.measureText(desLine(it)).width,E(it)>0?mctx.measureText('아크릴 '+fmt(AW(it))+' × '+fmt(AH(it))+' (가세'+agsOf(it)+')').width:0);
     return Math.ceil(Math.max(a,b))+12;
   }
+  /* 묶음(여러 개 선택): Shift/Ctrl/⌘+클릭 또는 "여러 개 선택"을 켜고 누르기. 저장하지 않음 */
+  var multi=[],multiOn=false;
+  function bundleHtml(pos,stageW){
+    if(multi.length<2)return '';
+    var L=1e9,T=1e9,R=-1e9,sum=0,est=false,none=0;
+    multi.forEach(function(id){
+      var p=pos[id];if(p){L=Math.min(L,p.l);T=Math.min(T,p.t);R=Math.max(R,p.r)}
+      var t=tierOf(get(id));if(t&&t.p){sum+=t.p;if(t.est)est=true}else none++;
+    });
+    if(R<0)return '';
+    var bw=170,left=R+14;if(left+bw>stageW-6)left=Math.max(6,L-14-bw);
+    return '<div class="bundle" style="left:'+left.toFixed(1)+'px;top:'+Math.max(30,T).toFixed(1)+'px">'
+      +'<button class="bx" data-bx="1" title="묶음 선택 풀기">×</button>'
+      +'묶음 '+multi.length+'개 (각 1개씩)<b>'+won(sum)+'</b>'
+      +(est?'<small>추정 단가 포함</small>':'')+(none?'<small>단가 없는 것 '+none+'개 빠짐</small>':'')+'</div>';
+  }
+  function clearMulti(){if(!multi.length)return false;multi=[];renderStage();return true}
   /* stage */
   function renderStage(){
     var wrap=$('#stageWrap'),stage=$('#stage');
@@ -565,8 +590,9 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     sS=s;totalCm=Math.max.apply(null,rows.map(rowW));fullCm=totalCm+PAD*2;
     var stageW=Math.max(availW,fullCm*s);
     var floorH=LABEL_PX+(state.ruler?RULER_PX:0);
-    var tagHtml='<div class="tag">실제 비율'+(real&&state.tab==='stand'?' · 스탠드 받침은 3/5mm 두께 반영':'')+(state.mode==='side'?' · 끌어서 순서·줄 바꾸기':'')+'</div>';
-    var html='',rowY=0;
+    var tagHtml='<div class="tag">실제 비율'+(real&&state.tab==='stand'?' · 스탠드 받침은 3/5mm 두께 반영':'')+(state.mode==='side'?' · 끌어서 순서·줄 바꾸기 · Shift+클릭으로 묶음 가격':'')+'</div>';
+    var html='',rowY=0,pos={};
+    multi=state.mode==='side'?multi.filter(function(id){var t=get(id);return t&&inTab(t)}):[];
     rows.forEach(function(row){
     var rw=rowW(row);
     var floorY=rowY+Math.round((rowH(row)+TOP)*s);
@@ -579,7 +605,8 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       var bw=bwOf(it)*s, bh=bhOf(it)*s;
       var cH=ih+bh;
       var top=floorY-cH; /* 받침(또는 코롯토 바닥)이 바닥선에 닿음 */
-      html+='<div class="item'+(real?' real':'')+(it.id===state.sel&&state.mode==='side'?' sel':'')+'" data-id="'+it.id+'" style="left:'+(x+ox).toFixed(1)+'px;top:'+top.toFixed(1)+'px;width:'+fw.toFixed(1)+'px;height:'+cH.toFixed(1)+'px">';
+      pos[it.id]={l:x+ox,t:top,r:x+ox+fw,b:top+cH};
+      html+='<div class="item'+(real?' real':'')+(it.id===state.sel&&state.mode==='side'?' sel':'')+(multi.indexOf(it.id)>=0?' msel':'')+'" data-id="'+it.id+'" style="left:'+(x+ox).toFixed(1)+'px;top:'+top.toFixed(1)+'px;width:'+fw.toFixed(1)+'px;height:'+cH.toFixed(1)+'px">';
       var mm=Math.max(0,Math.min(M(it)*s,iw/2-2,ih/2-2));
       var lx=((fw-iw)/2).toFixed(1);
       var acr=(real&&it.img)?acrUrl(it):null;
@@ -613,7 +640,8 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     rowY=floorY+floorH;
     });
     stage.style.width=stageW+'px';stage.style.height=rowY+'px';
-    stage.innerHTML=html+tagHtml;
+    stage.classList.toggle('multi',multiOn&&state.mode==='side');
+    stage.innerHTML=html+bundleHtml(pos,stageW)+tagHtml;
     var pct=Math.round(s/state.px*100);
     $('#info').textContent=state.fit
       ? '화면 맞춤 · 실제 크기의 약 '+pct+'% (물건끼리의 비율은 정확해요) · 실제 크기로 보려면 "실제 크기"를 누르세요'
@@ -694,6 +722,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     $('#gap').value=state.gap;$('#gapVal').textContent=fmt(state.gap)+' cm';
     $('#gapLbl').style.display=state.mode==='one'?'none':'flex';
     $('#navOne').style.display=state.mode==='one'?'inline':'none';
+    $('#multiLbl').style.display=state.mode==='one'?'none':'flex';$('#chkMulti').checked=multiOn;
     document.querySelectorAll('#tabSeg button').forEach(function(b){b.classList.toggle('on',b.dataset.t===state.tab)});
     ['stand','corotto'].forEach(function(t){$('[data-cnt="'+t+'"]').textContent=state.items.filter(function(i){return (i.type==='corotto'?'corotto':'stand')===t}).length});
     $('#listTitle').textContent=tabName()+' 목록';
@@ -820,7 +849,9 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     e.preventDefault();state.items.splice(i,1);state.sel=null;renderAll();imgGC();
   });
   document.addEventListener('keydown',function(e){
-    if(e.key!=='Escape'||state.sel==null)return;
+    if(e.key!=='Escape')return;
+    if(clearMulti())return;
+    if(state.sel==null)return;
     if($('#modal').classList.contains('open'))return;
     var a=document.activeElement;if(a&&a.blur&&a.closest&&a.closest('#list'))a.blur();
     setSel(null);
@@ -830,6 +861,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   $('#fitSeg').addEventListener('click',function(e){var f=e.target.dataset.f;if(!f)return;state.fit=(f==='fit');renderControls();renderStage();save()});
   $('#chkReal').addEventListener('change',function(e){state.real=e.target.checked;renderStage();save()});
   $('#chkRuler').addEventListener('change',function(e){state.ruler=e.target.checked;renderStage();save()});
+  $('#chkMulti').addEventListener('change',function(e){multiOn=e.target.checked;if(!multiOn)multi=[];else if(state.sel!=null){multi=[state.sel];state.sel=null;renderControls();document.querySelectorAll('.card.sel').forEach(function(c){c.classList.remove('sel')})}renderStage()});
   $('#chkInc').addEventListener('change',function(e){state.mInc=e.target.checked;syncTiers();renderStage();renderOrder();save()});
   $('#msIn').addEventListener('input',function(e){var v=parseFloat(e.target.value);if(!(v>=0))return;state.ms=Math.min(v,20);syncTiers();renderStage();renderOrder();save()});
   $('#mcIn').addEventListener('input',function(e){var v=parseFloat(e.target.value);if(!(v>=0))return;state.mc=Math.min(v,20);syncTiers();renderStage();renderOrder();save()});
@@ -863,6 +895,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       var el=e.target.closest(sel);if(!el||!root.contains(el))return;
       if(o.handle&&!e.target.closest(o.handle))return;
       if(e.target.closest('input,textarea,select,button'))return;
+      if(o.horiz&&(e.shiftKey||e.ctrlKey||e.metaKey||multiOn))return; /* 묶음 선택 중엔 끌지 않음 */
       if(e.pointerType!=='mouse'&&!o.touchOk(el,e))return;
       var id=+el.dataset.id,sx=e.clientX,sy=e.clientY,moved=false,tgt=null,after=false,newRow=false;
       function clear(){root.classList.remove('dropNew');root.querySelectorAll('.dropL,.dropR,.dropB,.dropA').forEach(function(x){x.classList.remove('dropL','dropR','dropB','dropA')})}
@@ -912,9 +945,18 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   dragSort($('#list'),'.card',{handle:'.chd',horiz:false,touchOk:function(el,e){return !!e.target.closest('.grip')}});
 
   $('#stage').addEventListener('click',function(e){
+    if(e.target.closest('[data-bx]')){clearMulti();return}
+    if(e.target.closest('.bundle'))return;
     var t=e.target.closest('.item');
-    if(!t){if(state.mode==='side'&&state.sel!=null)setSel(null);return} /* 빈 곳 누르면 선택 해제 */
+    if(!t){multi=[];if(state.mode==='side'&&state.sel!=null)setSel(null);else renderStage();return} /* 빈 곳 누르면 선택 해제 */
     var id=+t.dataset.id;
+    if(state.mode==='side'&&(e.shiftKey||e.ctrlKey||e.metaKey||multiOn)){ /* 묶음에 담기/빼기 */
+      if(!multi.length&&state.sel!=null&&state.sel!==id)multi=[state.sel];
+      var k=multi.indexOf(id);if(k>=0)multi.splice(k,1);else multi.push(id);
+      if(state.sel!=null)setSel(null);else renderStage();
+      return;
+    }
+    multi=[];
     if(state.mode==='side'&&state.sel===id){setSel(null);return} /* 선택된 것 다시 누르면 해제 */
     setSel(id);showSel();
   });
