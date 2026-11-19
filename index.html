@@ -301,8 +301,8 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   var DEF_TIERS_S=[[60,2800],[80,3000],[100,3200],[120,3500],[140,3800],[160,4000],[180,4300],[200,4700],[220,5000],[240,5300]].map(function(t){return {mm:t[0],p:t[1]}});
   /* 260~400 업체 표 */
   [[260,5600],[280,6200],[300,6600],[320,7400],[340,7600],[360,7800],[380,8200],[400,8500]].forEach(function(t){DEF_TIERS_S.push({mm:t[0],p:t[1],est:!!t[2]})});
-  /* 아크릴 스탠드(투명/사각형) 단가: 업체 표. 320·360~400mm 투명 단가는 아직 몰라서 비움(0 = 단가 없음) */
-  var DEF_TIERS_T=[[60,1800],[80,2000],[100,2200],[120,2500],[140,2800],[160,3000],[180,3300],[200,3700],[220,4000],[240,4300],[260,4600],[280,5200],[300,5600],[320,0],[340,6600],[360,0],[380,0],[400,0]].map(function(t){return {mm:t[0],p:t[1]}});
+  /* 아크릴 스탠드(투명/사각형) 단가: 업체 표 (60~400mm) */
+  var DEF_TIERS_T=[[60,1800],[80,2000],[100,2200],[120,2500],[140,2800],[160,3000],[180,3300],[200,3700],[220,4000],[240,4300],[260,4600],[280,5200],[300,5600],[320,6400],[340,6600],[360,6800],[380,7200],[400,7500]].map(function(t){return {mm:t[0],p:t[1]}});
   /* 코롯토(8T+1T접합) 단가 */
   var DEF_TIERS=[[40,2500],[50,2800],[60,2900],[70,3100],[80,3300],[90,3500],[100,3700],[110,3900],[120,4100],[140,4400],[150,4600],[180,5000]].map(function(t){return {mm:t[0],p:t[1]}});
   /* 코롯토(8T) 단가: 업체 8T 1~50개 기준. 120·140·150mm 8T 단가는 아직 몰라서 비움(0 = 단가 없음) */
@@ -417,9 +417,9 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       if(d.tiersS&&d.tiersS.length){ /* 예전에 추정값이던 구간은 새 기본값(업체 표)으로 */
         state.tiersS=cpT(d.tiersS).map(function(t){if(!t.est)return t;var n=DEF_TIERS_S.filter(function(x){return x.mm===t.mm})[0];return n?{mm:n.mm,p:n.p,est:!!n.est}:t});
       }
-      /* 잠깐 잘못 들어갔던 접합 금액(320·360·380·400)은 투명 표에서 비움 */
+      /* 비어 있거나 잠깐 잘못 들어갔던 접합 금액(320·360·380·400)은 업체 투명 단가로 */
       var BADT={320:7400,360:7800,380:8200,400:8500};
-      if(d.tiersT&&d.tiersT.length)state.tiersT=cpT(d.tiersT).map(function(t){if(BADT[t.mm]===t.p)t.p=0;return t});
+      if(d.tiersT&&d.tiersT.length)state.tiersT=cpT(d.tiersT).map(function(t){if(t.p&&BADT[t.mm]!==t.p)return t;var n=DEF_TIERS_T.filter(function(x){return x.mm===t.mm})[0];return n?{mm:n.mm,p:n.p}:t});
       state.sT=d.sT===true;
       if(d.tiers8&&d.tiers8.some(function(t){return t.p>0}))state.tiers8=cpT(d.tiers8); /* 전부 빈 예전 값은 기본 단가로 */
       state.c8=d.c8===true;
