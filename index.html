@@ -113,11 +113,21 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   .side{position:sticky;top:10px;max-height:calc(100vh - 20px);overflow-y:auto;overscroll-behavior:contain;
     background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:0 10px 10px}
   .side .sidehd{position:sticky;top:0;z-index:2;background:var(--panel);margin:0 -10px 8px;padding:10px;border-bottom:1px solid var(--line);flex-wrap:wrap}
-  .side #list{grid-template-columns:1fr}
+  .side #list{grid-template-columns:minmax(0,1fr)}.side .card{min-width:0}.cmeta{min-width:0}
   .side .card{background:var(--panel2)}
   .side .card .f input,.side .card input[type=text]{background:var(--bg)}
 }
 @media(min-width:1500px){.layout{grid-template-columns:minmax(0,1fr) 400px}}
+/* 목록 접기 (넓은 화면만) */
+#btnSide{display:none;white-space:nowrap}
+@media(min-width:900px){
+  #btnSide{display:inline-block}
+  .layout.sideoff{grid-template-columns:minmax(0,1fr) 46px}
+  .layout.sideoff .side{padding:0;overflow:hidden}
+  .layout.sideoff .side .sidehd{margin:0;padding:8px 4px;border-bottom:0;justify-content:center}
+  .layout.sideoff #btnSide{writing-mode:vertical-rl;padding:10px 6px;letter-spacing:2px}
+  .layout.sideoff #listTitle,.layout.sideoff .sideadd,.layout.sideoff #list{display:none}
+}
 
 /* 굿즈 목록: 선택한 것만 펼치고 나머지는 한 줄 요약 */
 .chd{display:flex;align-items:center;gap:10px;cursor:pointer;min-height:44px}
@@ -231,10 +241,11 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
 <aside class="side" id="side">
 <h2 class="sidehd">
   <span id="listTitle">굿즈 목록 (cm)</span>
-  <span>
+  <span class="sideadd">
     <button class="btn" id="btnAdd">+ 사이즈 추가</button>
     <button class="btn pri" id="btnImg">+ 이미지로 추가</button>
   </span>
+  <button class="btn" id="btnSide" title="목록 접기/펼치기">접기 ▸</button>
 </h2>
 <div id="list"></div>
 </aside>
@@ -366,7 +377,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   function snap(){
     return {
         items:state.items.map(function(i){return {name:i.name,type:i.type,bt:i.bt,w:i.w,h:i.h,bw:i.bw,bwAuto:i.bwAuto,lock:i.lock,imgId:i.imgId||null,qty:i.qty,row:i.row}}),
-        tab:state.tab,mode:state.mode,real:state.real,gap:state.gap,fit:state.fit,ruler:state.ruler,px:state.px,ms:state.ms,mc:state.mc,mInc:state.mInc,tiers:state.tiers,tiersS:state.tiersS,c8:state.c8,tiers8:state.tiers8
+        tab:state.tab,mode:state.mode,real:state.real,gap:state.gap,fit:state.fit,ruler:state.ruler,px:state.px,ms:state.ms,mc:state.mc,mInc:state.mInc,sideOff:state.sideOff,tiers:state.tiers,tiersS:state.tiersS,c8:state.c8,tiers8:state.tiers8
       };
   }
   function save(){
@@ -381,7 +392,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
         state.items=d.items.map(function(i){i.lock=false;return mk(i)});
         state.items.forEach(function(i,k){i.lock=d.items[k].lock!==false});
       }
-      ['tab','mode','real','gap','fit','ruler','px','ms','mc','mInc'].forEach(function(k){if(d[k]!==undefined)state[k]=d[k]});
+      ['tab','mode','real','gap','fit','ruler','px','ms','mc','mInc','sideOff'].forEach(function(k){if(d[k]!==undefined)state[k]=d[k]});
       if(state.tab!=='corotto')state.tab='stand';
       if(d.tiers&&d.tiers.length)state.tiers=cpT(d.tiers);
       if(d.tiersS&&d.tiersS.length)state.tiersS=cpT(d.tiersS);
@@ -726,6 +737,8 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     var q=c.querySelector('[data-f="qty"]');if(q&&except!=='qty'&&+q.value!==it.qty)q.value=it.qty;
   }
   function renderControls(){
+    $('.layout').classList.toggle('sideoff',!!state.sideOff);
+    var bs=$('#btnSide');bs.textContent=state.sideOff?'◂ 목록 펼치기':'접기 ▸';bs.title=state.sideOff?'목록 펼치기':'목록 접기';
     document.querySelectorAll('#modeSeg button').forEach(function(b){b.classList.toggle('on',b.dataset.m===state.mode)});
     document.querySelectorAll('#fitSeg button').forEach(function(b){b.classList.toggle('on',(b.dataset.f==='fit')===state.fit)});
     $('#chkReal').checked=state.real;$('#chkRuler').checked=state.ruler;$('#msIn').value=state.ms;$('#mcIn').value=state.mc;$('#chkInc').checked=state.mInc;
@@ -850,6 +863,9 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     document.querySelectorAll('.card').forEach(function(c){c.classList.toggle('sel',+c.dataset.id===id)});
     renderStage();
   }
+  $('#btnSide').addEventListener('click',function(){
+    state.sideOff=!state.sideOff;renderAll();if(!state.sideOff)showSel();
+  });
   $('#thkSeg').addEventListener('click',function(e){
     var b=e.target.closest('button');if(!b)return;
     state.c8=b.dataset.c8==='1';renderAll();
@@ -976,6 +992,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     }
     multi=[];
     if(state.mode==='side'&&state.sel===id){setSel(null);return} /* 선택된 것 다시 누르면 해제 */
+    if(state.sideOff){state.sideOff=false;renderControls();save()} /* 그림을 누르면 접힌 목록이 열림 */
     setSel(id);showSel();
   });
 
