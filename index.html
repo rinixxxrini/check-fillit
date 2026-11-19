@@ -276,8 +276,8 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   for(var _m=260,_p=5300;_m<=400;_m+=20){_p+=_m===260?300:600;DEF_TIERS_S.push({mm:_m,p:_p,est:_m>280})}
   /* 코롯토(8T+1T접합) 단가 */
   var DEF_TIERS=[[40,2500],[50,2800],[60,2900],[70,3100],[80,3300],[90,3500],[100,3700],[110,3900],[120,4100],[140,4400],[150,4600],[180,5000]].map(function(t){return {mm:t[0],p:t[1]}});
-  /* 코롯토(8T) 단가: 업체 표를 받기 전이라 구간만 접합과 같게 두고 단가는 비움(0 = 단가 없음) */
-  var DEF_TIERS8=DEF_TIERS.map(function(t){return {mm:t.mm,p:0}});
+  /* 코롯토(8T) 단가: 업체 8T 1~50개 기준. 120·140·150mm 8T 단가는 아직 몰라서 비움(0 = 단가 없음) */
+  var DEF_TIERS8=[[40,1700],[50,2000],[60,2100],[70,2300],[80,2500],[90,2700],[100,2900],[110,3100],[120,0],[140,0],[150,0],[180,4200]].map(function(t){return {mm:t[0],p:t[1]}});
   var state={items:[],tab:'stand',c8:false,tiers8:cpT(DEF_TIERS8),mode:'side',real:true,gap:0.5,fit:true,ruler:false,sel:null,px:DEF_PX,ms:2,mc:3,mInc:true,tiers:cpT(DEF_TIERS),tiersS:cpT(DEF_TIERS_S)};
   function cpT(a){return a.map(function(t){return {mm:+t.mm||0,p:+t.p||0,est:!!t.est}})}
   function tl(k){return k==='S'?state.tiersS:k==='8'?state.tiers8:state.tiers}
@@ -385,7 +385,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       if(state.tab!=='corotto')state.tab='stand';
       if(d.tiers&&d.tiers.length)state.tiers=cpT(d.tiers);
       if(d.tiersS&&d.tiersS.length)state.tiersS=cpT(d.tiersS);
-      if(d.tiers8&&d.tiers8.length)state.tiers8=cpT(d.tiers8);
+      if(d.tiers8&&d.tiers8.some(function(t){return t.p>0}))state.tiers8=cpT(d.tiers8); /* 전부 빈 예전 값은 기본 단가로 */
       state.c8=d.c8===true;
     }
     state.sel=null; /* 처음엔 아무것도 선택하지 않음 */
@@ -768,8 +768,8 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
           +(r.t&&r.qty>50?'<div class="warn">50개를 넘어요. 업체 수량구간(1~50개)을 확인해 주세요.</div>':'')
           +'</td><td class="n"><b>'+r.qty+'개</b></td><td class="n">'+(p?won(p)+(r.t.est?'<div class="names">추정</div>':''):'-')+'</td><td class="n">'+(p?won(p*r.qty):'-')+'</td></tr>';
       });
-      if(state.c8&&state.items.some(function(i){return i.type==='corotto'})&&!state.tiers8.some(function(t){return t.p>0}))
-        h+='<tr><td colspan="4"><div class="warn">코롯토 8T 단가가 아직 비어 있어요. 아래 "코롯토 (8T) 구간·단가"를 눌러 입력해 주세요.</div></td></tr>';
+      if(state.c8&&state.items.some(function(i){return i.type==='corotto'})&&gs.some(function(r){return r.t&&!r.t.p&&r.label.indexOf('(8T)')>=0}))
+        h+='<tr><td colspan="4"><div class="warn">코롯토 8T 중 단가를 모르는 구간이 있어요. 아래 "코롯토 (8T) 구간·단가"에서 입력해 주세요.</div></td></tr>';
       h+='<tr class="tot"><td>합계 · 디자인 '+state.items.length+'종</td><td class="n">'+tq+'개</td><td></td><td class="n">'+won(tp)+(allP?'':' +α')+'</td></tr></table>';
     }
     function ed(k,title,L){
