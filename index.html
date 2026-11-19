@@ -19,6 +19,7 @@ h1{font-size:17px;margin:4px 0 2px;text-align:center;font-weight:700}
 .lead{font-size:12.5px;color:var(--sub);text-align:center;margin:0 0 14px}
 .seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
 .seg button{background:none;border:0;color:var(--txt);font:inherit;font-size:14px;padding:7px 14px;border-radius:8px;cursor:pointer}
+#thkSeg{margin:4px 0 0 8px}
 .seg button.on{background:var(--accent);color:var(--txt);font-weight:600}
 .bar{display:flex;flex-wrap:wrap;gap:10px 18px;justify-content:center;align-items:center;margin:12px 0}
 .bar label{display:flex;align-items:center;gap:7px;font-size:13.5px;color:var(--txt)}
@@ -190,6 +191,10 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     <button data-m="one">하나씩</button>
     <button data-m="side">나란히 실제 비율</button>
   </div>
+  <div class="seg" id="thkSeg" title="코롯토 단가표 선택: 탭 안의 모든 코롯토에 적용돼요">
+    <button data-c8="0">8T+1T 접합</button>
+    <button data-c8="1">8T</button>
+  </div>
 </div>
 
 <div class="bar">
@@ -271,10 +276,13 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   for(var _m=260,_p=5300;_m<=400;_m+=20){_p+=_m===260?300:600;DEF_TIERS_S.push({mm:_m,p:_p,est:_m>280})}
   /* 코롯토(8T+1T접합) 단가 */
   var DEF_TIERS=[[40,2500],[50,2800],[60,2900],[70,3100],[80,3300],[90,3500],[100,3700],[110,3900],[120,4100],[140,4400],[150,4600],[180,5000]].map(function(t){return {mm:t[0],p:t[1]}});
-  var state={items:[],tab:'stand',mode:'side',real:true,gap:0.5,fit:true,ruler:false,sel:null,px:DEF_PX,ms:2,mc:3,mInc:true,tiers:cpT(DEF_TIERS),tiersS:cpT(DEF_TIERS_S)};
+  /* 코롯토(8T) 단가: 업체 표를 받기 전이라 구간만 접합과 같게 두고 단가는 비움(0 = 단가 없음) */
+  var DEF_TIERS8=DEF_TIERS.map(function(t){return {mm:t.mm,p:0}});
+  var state={items:[],tab:'stand',c8:false,tiers8:cpT(DEF_TIERS8),mode:'side',real:true,gap:0.5,fit:true,ruler:false,sel:null,px:DEF_PX,ms:2,mc:3,mInc:true,tiers:cpT(DEF_TIERS),tiersS:cpT(DEF_TIERS_S)};
   function cpT(a){return a.map(function(t){return {mm:+t.mm||0,p:+t.p||0,est:!!t.est}})}
-  function tl(k){return k==='S'?state.tiersS:state.tiers}
-  function tlOf(it){return it.type==='corotto'?state.tiers:state.tiersS}
+  function tl(k){return k==='S'?state.tiersS:k==='8'?state.tiers8:state.tiers}
+  function tlOf(it){return it.type==='corotto'?(state.c8?state.tiers8:state.tiers):state.tiersS}
+  function cName(){return state.c8?'8T':'8T+1T접합'} /* 코롯토 탭 전체 두께 스위치 */
   function M(i){return Math.max(0,(i&&i.type==='corotto'?state.mc:state.ms)||0)/10} /* 사방 여백 (cm): 스탠드 2mm / 코롯토 3mm */
   /* mInc=false(기본): 입력 크기 = 그림(발주 파일) 크기, 업체가 바깥으로 여백 추가 / true: 입력 크기에 여백 포함 */
   function E(i){return state.mInc?0:M(i)}   /* 입력 크기 바깥으로 더해지는 여백 */
@@ -358,7 +366,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   function snap(){
     return {
         items:state.items.map(function(i){return {name:i.name,type:i.type,bt:i.bt,w:i.w,h:i.h,bw:i.bw,bwAuto:i.bwAuto,lock:i.lock,imgId:i.imgId||null,qty:i.qty,row:i.row}}),
-        tab:state.tab,mode:state.mode,real:state.real,gap:state.gap,fit:state.fit,ruler:state.ruler,px:state.px,ms:state.ms,mc:state.mc,mInc:state.mInc,tiers:state.tiers,tiersS:state.tiersS
+        tab:state.tab,mode:state.mode,real:state.real,gap:state.gap,fit:state.fit,ruler:state.ruler,px:state.px,ms:state.ms,mc:state.mc,mInc:state.mInc,tiers:state.tiers,tiersS:state.tiersS,c8:state.c8,tiers8:state.tiers8
       };
   }
   function save(){
@@ -377,6 +385,8 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       if(state.tab!=='corotto')state.tab='stand';
       if(d.tiers&&d.tiers.length)state.tiers=cpT(d.tiers);
       if(d.tiersS&&d.tiersS.length)state.tiersS=cpT(d.tiersS);
+      if(d.tiers8&&d.tiers8.length)state.tiers8=cpT(d.tiers8);
+      state.c8=d.c8===true;
     }
     state.sel=null; /* 처음엔 아무것도 선택하지 않음 */
   }
@@ -723,6 +733,8 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     $('#gapLbl').style.display=state.mode==='one'?'none':'flex';
     $('#navOne').style.display=state.mode==='one'?'inline':'none';
     $('#multiLbl').style.display=state.mode==='one'?'none':'flex';$('#chkMulti').checked=multiOn;
+    $('#thkSeg').style.display=state.tab==='corotto'?'inline-flex':'none';
+    document.querySelectorAll('#thkSeg button').forEach(function(b){b.classList.toggle('on',(b.dataset.c8==='1')===state.c8)});
     document.querySelectorAll('#tabSeg button').forEach(function(b){b.classList.toggle('on',b.dataset.t===state.tab)});
     ['stand','corotto'].forEach(function(t){$('[data-cnt="'+t+'"]').textContent=state.items.filter(function(i){return (i.type==='corotto'?'corotto':'stand')===t}).length});
     $('#listTitle').textContent=tabName()+' 목록';
@@ -733,7 +745,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     var mixed=true; /* 종류마다 단가표가 달라서 항상 종류별로 나눈다 */
     var g={},keys=[];
     state.items.forEach(function(it){
-      var t=tierOf(it),tn=it.type==='corotto'?'코롯토':'아크릴 스탠드';
+      var t=tierOf(it),tn=it.type==='corotto'?'코롯토 ('+cName()+')':'아크릴 스탠드';
       var k=(mixed?tn:'')+'|'+(t?t.mm:'over');
       if(!g[k]){g[k]={label:(mixed?tn+' · ':'')+(t?'[가로+세로] '+t.mm+'mm 이하':'구간 없음 (최대 '+((sortedTiers(tlOf(it)).slice(-1)[0]||{mm:0}).mm)+'mm 초과)'),t:t,qty:0,items:[],sort:(it.type==='corotto'?1e6:0)+(t?t.mm:9e5)};keys.push(k)}
       g[k].qty+=it.qty;g[k].items.push(it);
@@ -756,6 +768,8 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
           +(r.t&&r.qty>50?'<div class="warn">50개를 넘어요. 업체 수량구간(1~50개)을 확인해 주세요.</div>':'')
           +'</td><td class="n"><b>'+r.qty+'개</b></td><td class="n">'+(p?won(p)+(r.t.est?'<div class="names">추정</div>':''):'-')+'</td><td class="n">'+(p?won(p*r.qty):'-')+'</td></tr>';
       });
+      if(state.c8&&state.items.some(function(i){return i.type==='corotto'})&&!state.tiers8.some(function(t){return t.p>0}))
+        h+='<tr><td colspan="4"><div class="warn">코롯토 8T 단가가 아직 비어 있어요. 아래 "코롯토 (8T) 구간·단가"를 눌러 입력해 주세요.</div></td></tr>';
       h+='<tr class="tot"><td>합계 · 디자인 '+state.items.length+'종</td><td class="n">'+tq+'개</td><td></td><td class="n">'+won(tp)+(allP?'':' +α')+'</td></tr></table>';
     }
     function ed(k,title,L){
@@ -763,7 +777,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       +L.map(function(t,i){return '<span class="t"><input type="number" inputmode="numeric" min="1" step="1" data-tl="'+k+'" data-ti="'+i+'" data-tk="mm" value="'+(t.mm||'')+'">mm 이하<input class="p" type="number" inputmode="numeric" min="0" step="10" data-tl="'+k+'" data-ti="'+i+'" data-tk="p" value="'+(t.p||'')+'">원'+(t.est?'<small title="업체 표에 없어 추정한 값">추정</small>':'')+'<button class="rm" data-tl="'+k+'" data-trm="'+i+'" title="구간 삭제">✕</button></span>'}).join('')
       +'<button class="btn sm" data-tl="'+k+'" data-tadd="1">+ 구간</button><button class="btn sm" data-tl="'+k+'" data-treset="1">기본값</button></div></details>';
     }
-    h+=ed('S','아크릴 스탠드 (접합/사각형)',state.tiersS)+ed('C','코롯토 (8T+1T접합)',state.tiers)
+    h+=ed('S','아크릴 스탠드 (접합/사각형)',state.tiersS)+ed('C','코롯토 (8T+1T접합)',state.tiers)+ed('8','코롯토 (8T)',state.tiers8)
       +'<p class="info" style="text-align:left;margin-top:8px">구간은 실제 아크릴 크기(여백 포함)의 가로+세로 합으로 정해요. 스탠드 300mm 이상 단가는 확인 전이라 280mm(6,200원)에서 20mm당 600원씩 올려 추정한 값이에요("추정" 표시). 실제 금액을 보면 고쳐 주세요. 이름에 "수량 10"이 들어 있으면 수량으로 자동 입력돼요.</p>';
     box.innerHTML=h;
   }
@@ -836,6 +850,10 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     document.querySelectorAll('.card').forEach(function(c){c.classList.toggle('sel',+c.dataset.id===id)});
     renderStage();
   }
+  $('#thkSeg').addEventListener('click',function(e){
+    var b=e.target.closest('button');if(!b)return;
+    state.c8=b.dataset.c8==='1';renderAll();
+  });
   $('#tabSeg').addEventListener('click',function(e){
     var b=e.target.closest('button');if(!b||b.dataset.t===state.tab)return;
     state.tab=b.dataset.t;state.sel=null;renderAll();
@@ -1037,7 +1055,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     var k=t.dataset.tl,L=k&&tl(k);if(!L)return;
     if(t.dataset.trm!==undefined){L.splice(+t.dataset.trm,1)}
     else if(t.dataset.tadd){var ts=sortedTiers(L),l=ts[ts.length-1];L.push({mm:l?l.mm+20:100,p:l?l.p+300:0})}
-    else if(t.dataset.treset){if(k==='S')state.tiersS=cpT(DEF_TIERS_S);else state.tiers=cpT(DEF_TIERS)}
+    else if(t.dataset.treset){if(k==='S')state.tiersS=cpT(DEF_TIERS_S);else if(k==='8')state.tiers8=cpT(DEF_TIERS8);else state.tiers=cpT(DEF_TIERS)}
     else return;
     syncTiers();renderOrder();save();
   });
