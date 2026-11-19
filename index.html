@@ -195,6 +195,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     <button data-f="real">실제 크기</button>
   </div>
   <button class="btn" id="btnCal">화면 보정</button>
+  <button class="btn" id="btnExp" title="지금 탭의 굿즈를 나란히 놓은 이미지(PNG)로 저장해요. 그림 아래에는 디자인 크기와 여백만 적혀요.">이미지로 저장</button>
   <span id="navOne" style="display:none"><button class="btn sm" id="prev">◀</button> <button class="btn sm" id="next">▶</button></span>
 </div>
 
@@ -571,7 +572,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       }
       html+='</div>';
       var lw=Math.max(fw,150);
-      html+='<div class="lab" style="left:'+(x+fw/2-lw/2).toFixed(1)+'px;top:'+(floorY+10)+'px;width:'+lw.toFixed(1)+'px"><b>'+fmt(it.w)+' × '+fmt(it.h)+' · 가세'+gsOf(it)+'</b><span>'+(st?'아크릴 스탠드 · 받침 '+(it.bt||3)+'mm':'코롯토')+' · '+esc(it.name)+'</span>'+(E(it)>0?'<span>아크릴 '+fmt(AW(it))+' × '+fmt(AH(it))+' (가세'+Math.round(AW(it)*10+AH(it)*10)+')</span>':'')+'<span>디자인 '+fmt(AW(it)-2*M(it))+' × '+fmt(AH(it)-2*M(it))+' · 여백 '+(Math.round(M(it)*100)/10)+'mm</span>'+'</div>';
+      html+='<div class="lab" style="left:'+(x+fw/2-lw/2).toFixed(1)+'px;top:'+(floorY+10)+'px;width:'+lw.toFixed(1)+'px"><b>'+fmt(it.w)+' × '+fmt(it.h)+' · 가세'+gsOf(it)+'</b>'+(st?'<span>받침 '+(it.bt||3)+'mm</span>':'')+(E(it)>0?'<span>아크릴 '+fmt(AW(it))+' × '+fmt(AH(it))+' (가세'+Math.round(AW(it)*10+AH(it)*10)+')</span>':'')+'<span>디자인 '+fmt(AW(it)-2*M(it))+' × '+fmt(AH(it)-2*M(it))+'</span><span>여백 '+(Math.round(M(it)*100)/10)+'mm</span>'+'</div>';
       x+=fw+g*s;
     });
       if(state.ruler){
@@ -990,6 +991,61 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
     $('#cc').style.width=(8.56*p)+'px';$('#cc').style.height=(5.4*p)+'px';
     $('#calVal').textContent='1cm = '+p.toFixed(1)+'px';
   }
+  /* 업체 참고용 이미지 내보내기: 지금 탭의 굿즈를 줄 배치 그대로, 그림 아래에 "디자인 W × H cm" / "여백 Nmm"만 적는다 */
+  function exportPng(done){
+    var V=vis();if(!V.length){done(false);return}
+    var rows=normRows(V),S=Math.max(30,Math.min(80,3600/Math.max.apply(null,rows.map(function(r){return r.reduce(function(t,i){return t+AW(i)+0.5},0)})))),F=$('body')?getComputedStyle(document.body).fontFamily:'sans-serif';
+    var PADX=48,PADY=40,LG=14,L1=24,L2=21,LH=L1+L2+18,MINGAP=24;
+    var c=document.createElement('canvas').getContext('2d');
+    function tx(it){return ['디자인 '+fmt(AW(it)-2*M(it))+' × '+fmt(AH(it)-2*M(it))+'cm','여백 '+(Math.round(M(it)*100)/10)+'mm']}
+    function slotW(it){var t=tx(it);c.font='600 '+L1+'px '+F;var a=c.measureText(t[0]).width;c.font=L2+'px '+F;var b=c.measureText(t[1]).width;return Math.max(AW(it)*S,a+8,b+8)}
+    var gap=Math.max(MINGAP,state.gap*S);
+    var lay=rows.map(function(r){
+      var ws=r.map(slotW),w=ws.reduce(function(a,b){return a+b},0)+gap*(r.length-1);
+      var h=Math.max.apply(null,r.map(function(i){return AH(i)*S+(i.type!=='corotto'?(i.bt||3)/10*S:0)}));
+      return {r:r,ws:ws,w:w,h:h};
+    });
+    var W=Math.ceil(Math.max.apply(null,lay.map(function(l){return l.w}))+PADX*2);
+    var H=Math.ceil(lay.reduce(function(a,l){return a+l.h+LG+LH},0)+PADY*2+(lay.length-1)*PADY);
+    var cv=document.createElement('canvas');cv.width=W;cv.height=H;
+    var o=cv.getContext('2d');
+    o.fillStyle='#e9ebef';o.fillRect(0,0,W,H);
+    o.textAlign='center';o.textBaseline='top';
+    var y=PADY;
+    lay.forEach(function(l){
+      var x=(W-l.w)/2,fy=y+l.h;
+      l.r.forEach(function(it,k){
+        var cx=x+l.ws[k]/2,iw=AW(it)*S,ih=AH(it)*S,bh=it.type!=='corotto'?(it.bt||3)/10*S:0;
+        var bx=cx-iw/2,by=fy-bh-ih;
+        var a=it.im?buildAcr(it,M(it),AW(it),AH(it)):null;
+        o.save();o.shadowColor='rgba(30,35,50,.22)';o.shadowBlur=4;o.shadowOffsetY=1;
+        if(a)o.drawImage(a,bx,by,iw,ih);
+        else{o.fillStyle='#fff';o.strokeStyle='#70757f';o.lineWidth=2;o.beginPath();o.rect(bx,by,iw,ih);o.fill();o.stroke()}
+        if(bh){var bw=Math.max(iw,it.bwAuto?iw:(it.bw||0)*S);o.fillStyle='rgba(255,255,255,.85)';o.fillRect(cx-bw/2,fy-bh,bw,bh)}
+        o.restore();
+        var t=tx(it);
+        o.fillStyle='#1a1a1a';o.font='600 '+L1+'px '+F;o.fillText(t[0],cx,fy+LG);
+        o.fillStyle='#4a4f5a';o.font=L2+'px '+F;o.fillText(t[1],cx,fy+LG+L1+8);
+        x+=l.ws[k]+gap;
+      });
+      y=fy+LG+LH+PADY;
+    });
+    cv.toBlob(function(b){
+      if(!b){done(false);return}
+      var u=URL.createObjectURL(b),a=document.createElement('a');
+      a.href=u;a.download=tabName()+'_업체참고.png';document.body.appendChild(a);a.click();a.remove();
+      setTimeout(function(){URL.revokeObjectURL(u)},4000);done(true);
+    },'image/png');
+  }
+  $('#btnExp').addEventListener('click',function(){
+    var b=$('#btnExp');if(b.disabled)return;
+    if(!vis().length){alert(tabName()+'가 없어요');return}
+    b.disabled=true;b.textContent='만드는 중…';
+    setTimeout(function(){
+      try{exportPng(function(){b.disabled=false;b.textContent='이미지로 저장'})}
+      catch(e){b.disabled=false;b.textContent='이미지로 저장';alert('이미지를 만들지 못했어요')}
+    },30);
+  });
   $('#btnCal').addEventListener('click',function(){$('#calRange').value=state.px;calDraw();$('#modal').classList.add('open')});
   $('#calRange').addEventListener('input',calDraw);
   $('#calReset').addEventListener('click',function(){$('#calRange').value=DEF_PX;calDraw()});
