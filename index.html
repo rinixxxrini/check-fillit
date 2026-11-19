@@ -572,7 +572,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       }
       html+='</div>';
       var lw=Math.max(fw,150);
-      html+='<div class="lab" style="left:'+(x+fw/2-lw/2).toFixed(1)+'px;top:'+(floorY+10)+'px;width:'+lw.toFixed(1)+'px"><b>'+fmt(it.w)+' × '+fmt(it.h)+' · 가세'+gsOf(it)+'</b>'+(st?'<span>받침 '+(it.bt||3)+'mm</span>':'')+(E(it)>0?'<span>아크릴 '+fmt(AW(it))+' × '+fmt(AH(it))+' (가세'+Math.round(AW(it)*10+AH(it)*10)+')</span>':'')+'<span>디자인 '+fmt(AW(it)-2*M(it))+' × '+fmt(AH(it)-2*M(it))+' · 여백 '+(Math.round(M(it)*100)/10)+'mm</span>'+'</div>';
+      html+='<div class="lab" style="left:'+(x+fw/2-lw/2).toFixed(1)+'px;top:'+(floorY+10)+'px;width:'+lw.toFixed(1)+'px"><b>'+fmt(it.w)+' × '+fmt(it.h)+' · 가세'+gsOf(it)+'</b>'+(st?'<span>받침 '+(it.bt||3)+'mm</span>':'')+(E(it)>0?'<span>아크릴 '+fmt(AW(it))+' × '+fmt(AH(it))+' (가세'+Math.round(AW(it)*10+AH(it)*10)+')</span>':'')+'<span>디자인 '+fmt(AW(it)-2*M(it))+' × '+fmt(AH(it)-2*M(it))+'</span><span>여백 '+(Math.round(M(it)*100)/10)+'mm</span>'+'</div>';
       x+=fw+g*s;
     });
       if(state.ruler){
