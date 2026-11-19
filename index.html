@@ -37,6 +37,17 @@ input[type=checkbox]{accent-color:var(--accent-d);width:16px;height:16px}
 /* stage */
 #stageWrap{overflow-x:auto;overflow-y:hidden;border-radius:12px;background:#cfd3da;border:1px solid var(--line);position:relative}
 #stage{position:relative;min-width:100%}
+/* 줄마다 따로 가로 스크롤 (스크롤바는 숨기고 ◀ ▶ 버튼·휠·스와이프로 이동) */
+.srow{position:absolute;left:0;right:0;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none}
+.srow::-webkit-scrollbar{display:none}
+/* 줄이 화면보다 넓으면 양옆 ◀ ▶ 버튼으로 그 줄만 이동 */
+.rnav{position:absolute;z-index:35;width:34px;height:52px;margin-top:-26px;border:1px solid var(--line);background:rgba(255,255,255,.9);color:var(--txt);font-size:16px;cursor:pointer;box-shadow:0 2px 6px rgba(30,35,50,.15);display:flex;align-items:center;justify-content:center;padding:0}
+.rnav.l{left:6px;border-radius:0 10px 10px 0}.rnav.r{right:6px;border-radius:10px 0 0 10px}
+.rnav:disabled{opacity:0;pointer-events:none}
+#stage.dragRow .rnav{display:none}
+.srin{position:relative;height:100%}
+#stage.dragRow .srow{overflow:visible}
+#stage.dragRow .srow.from{z-index:40}
 .wall{position:absolute;left:0;right:0;top:0;background:linear-gradient(#d7dae0,#c4c8d0)}
 .floor{position:absolute;left:0;right:0;bottom:0;background:#d5d2ca;border-top:1px solid #b9b5ab}
 .tag{position:absolute;left:10px;top:8px;font-size:12px;color:#4b5160;pointer-events:none;position:sticky}
@@ -609,16 +620,20 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       sS=s;
     }else s=state.px;
     sS=s;totalCm=Math.max.apply(null,rows.map(rowW));fullCm=totalCm+PAD*2;
-    var stageW=Math.max(availW,fullCm*s);
+    var stageW=availW; /* 무대는 화면 너비, 넘치는 줄은 줄마다 따로 가로 스크롤 */
+    var rowSL=[].map.call(stage.querySelectorAll('.srow'),function(r){return r.scrollLeft}); /* 다시 그려도 스크롤 위치 유지 */
+    var anchor=multi.length>=2?multi[multi.length-1]:null;
     var floorH=LABEL_PX+(state.ruler?RULER_PX:0);
     var tagHtml='<div class="tag">실제 비율'+(real&&state.tab==='stand'?' · 스탠드 받침은 3/5mm 두께 반영':'')+(state.mode==='side'?' · 끌어서 순서·줄 바꾸기 · Shift+클릭으로 묶음 가격':'')+'</div>';
-    var html='',rowY=0,pos={};
+    var html='',rowY=0,pos={},bpos={};
     multi=state.mode==='side'?multi.filter(function(id){var t=get(id);return t&&inTab(t)}):[];
     rows.forEach(function(row){
     var rw=rowW(row);
-    var floorY=rowY+Math.round((rowH(row)+TOP)*s);
-    html+='<div class="wall" style="top:'+rowY+'px;height:'+(floorY-rowY)+'px"></div><div class="floor" style="top:'+floorY+'px;bottom:auto;height:'+floorH+'px"></div>';
-    var x0=(stageW-rw*s)/2;
+    var Y0=rowY,rowStW=Math.max(availW,(rw+PAD*2)*s);
+    var floorY=Math.round((rowH(row)+TOP)*s); /* 줄 안 좌표 */
+    html+='<div class="srow" style="top:'+Y0+'px;height:'+(floorY+floorH)+'px"><div class="srin" style="width:'+rowStW.toFixed(1)+'px">';
+    html+='<div class="wall" style="top:0;height:'+floorY+'px"></div><div class="floor" style="top:'+floorY+'px;bottom:auto;height:'+floorH+'px"></div>';
+    var x0=(rowStW-rw*s)/2,hasA=false;
     var x=x0;
     row.forEach(function(it){
       var st=isSt(it);
@@ -626,7 +641,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       var bw=bwOf(it)*s, bh=bhOf(it)*s;
       var cH=ih+bh;
       var top=floorY-cH; /* 받침(또는 코롯토 바닥)이 바닥선에 닿음 */
-      pos[it.id]={l:x+ox,t:top,r:x+ox+fw,b:top+cH};
+      pos[it.id]={l:x+ox,t:top,r:x+ox+fw,b:top+cH};if(it.id===anchor)hasA=true;
       html+='<div class="item'+(real?' real':'')+(it.id===state.sel&&state.mode==='side'?' sel':'')+(multi.indexOf(it.id)>=0?' msel':'')+'" data-id="'+it.id+'" style="left:'+(x+ox).toFixed(1)+'px;top:'+top.toFixed(1)+'px;width:'+fw.toFixed(1)+'px;height:'+cH.toFixed(1)+'px">';
       var mm=Math.max(0,Math.min(M(it)*s,iw/2-2,ih/2-2));
       var lx=((fw-iw)/2).toFixed(1);
@@ -658,11 +673,26 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
         for(var c=0;c<=rw;c+=step){html+='<i style="left:'+(c*s).toFixed(1)+'px">'+c+'</i>'}
         html+='</div>';
       }
-    rowY=floorY+floorH;
+    if(hasA){row.forEach(function(i){if(multi.indexOf(i.id)>=0)bpos[i.id]=pos[i.id]});html+=bundleHtml(bpos,rowStW)} /* 묶음 상자는 마지막으로 담은 그림의 줄 안에 */
+    html+='</div></div>';
+    rowY=Y0+floorY+floorH;
     });
     stage.style.width=stageW+'px';stage.style.height=rowY+'px';
     stage.classList.toggle('multi',multiOn&&state.mode==='side');
-    stage.innerHTML=html+bundleHtml(pos,stageW)+tagHtml;
+    stage.innerHTML=html+tagHtml;
+    [].forEach.call(stage.querySelectorAll('.srow'),function(r,i){
+      if(rowSL[i])r.scrollLeft=rowSL[i];
+      if(r.scrollWidth<=r.clientWidth+1)return;
+      var my=parseFloat(r.style.top)+r.querySelector('.wall').offsetHeight/2;
+      var bl=document.createElement('button'),br=document.createElement('button');
+      bl.className='rnav l';bl.textContent='◀';bl.title='이 줄 왼쪽 보기';br.className='rnav r';br.textContent='▶';br.title='이 줄 오른쪽 보기';
+      bl.style.top=br.style.top=my+'px';
+      bl.onclick=function(e){e.stopPropagation();r.scrollBy({left:-r.clientWidth*0.8,behavior:'smooth'})};
+      br.onclick=function(e){e.stopPropagation();r.scrollBy({left:r.clientWidth*0.8,behavior:'smooth'})};
+      function upd(){bl.disabled=r.scrollLeft<=1;br.disabled=r.scrollLeft>=r.scrollWidth-r.clientWidth-1}
+      r.addEventListener('scroll',upd,{passive:true});upd();
+      stage.appendChild(bl);stage.appendChild(br);
+    });
     var pct=Math.round(s/state.px*100);
     $('#info').textContent=state.fit
       ? '화면 맞춤 · 실제 크기의 약 '+pct+'% (물건끼리의 비율은 정확해요) · 실제 크기로 보려면 "실제 크기"를 누르세요'
@@ -931,11 +961,22 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       if(e.target.closest('input,textarea,select,button'))return;
       if(o.horiz&&(e.shiftKey||e.ctrlKey||e.metaKey||multiOn))return; /* 묶음 선택 중엔 끌지 않음 */
       if(e.pointerType!=='mouse'&&!o.touchOk(el,e))return;
+      /* 끄는 동안 줄 스크롤 잘림을 풀어 다른 줄로 옮길 수 있게 (스크롤 위치는 transform으로 유지) */
+      function openRows(on){
+        root.querySelectorAll('.srow').forEach(function(r){
+          var inn=r.firstElementChild;if(!inn)return;
+          if(on){r.dataset.sl=r.scrollLeft;inn.style.transform='translateX('+(-r.scrollLeft)+'px)'}
+          else{inn.style.transform='';r.classList.remove('from')}
+        });
+        var fr=el.closest('.srow');if(fr&&on)fr.classList.add('from');
+        root.classList.toggle('dragRow',on);
+        if(!on)root.querySelectorAll('.srow').forEach(function(r){r.scrollLeft=+r.dataset.sl||0});
+      }
       var id=+el.dataset.id,sx=e.clientX,sy=e.clientY,moved=false,tgt=null,after=false,newRow=false;
       function clear(){root.classList.remove('dropNew');root.querySelectorAll('.dropL,.dropR,.dropB,.dropA').forEach(function(x){x.classList.remove('dropL','dropR','dropB','dropA')})}
       function move(ev){
         var dx=ev.clientX-sx,dy=ev.clientY-sy;
-        if(!moved){if(Math.abs(dx)+Math.abs(dy)<6)return;moved=true;el.classList.add('dragging')}
+        if(!moved){if(Math.abs(dx)+Math.abs(dy)<6)return;moved=true;el.classList.add('dragging');if(o.horiz)openRows(true)}
         ev.preventDefault();
         el.style.transform='translate('+dx+'px,'+dy+'px)';
         var best=null,bd=1e9;
@@ -954,7 +995,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       }
       function up(){
         window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);
-        el.classList.remove('dragging');el.style.transform='';clear();
+        el.classList.remove('dragging');el.style.transform='';clear();if(o.horiz&&moved)openRows(false);
         if(!moved)return;
         justDragged=true;setTimeout(function(){justDragged=false},0);
         var it=get(id);if(!it)return;
