@@ -305,8 +305,8 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
   var DEF_TIERS_T=[[60,1800],[80,2000],[100,2200],[120,2500],[140,2800],[160,3000],[180,3300],[200,3700],[220,4000],[240,4300],[260,4600],[280,5200],[300,5600],[320,6400],[340,6600],[360,6800],[380,7200],[400,7500]].map(function(t){return {mm:t[0],p:t[1]}});
   /* 코롯토(8T+1T접합) 단가 */
   var DEF_TIERS=[[40,2500],[50,2800],[60,2900],[70,3100],[80,3300],[90,3500],[100,3700],[110,3900],[120,4100],[140,4400],[150,4600],[180,5000]].map(function(t){return {mm:t[0],p:t[1]}});
-  /* 코롯토(8T) 단가: 업체 8T 1~50개 기준. 120·140·150mm 8T 단가는 아직 몰라서 비움(0 = 단가 없음) */
-  var DEF_TIERS8=[[40,1700],[50,2000],[60,2100],[70,2300],[80,2500],[90,2700],[100,2900],[110,3100],[120,0],[140,0],[150,0],[180,4200]].map(function(t){return {mm:t[0],p:t[1]}});
+  /* 코롯토(8T) 단가: 업체 8T 1~50개 기준 */
+  var DEF_TIERS8=[[40,1700],[50,2000],[60,2100],[70,2300],[80,2500],[90,2700],[100,2900],[110,3100],[120,3300],[140,3600],[150,3800],[180,4200]].map(function(t){return {mm:t[0],p:t[1]}});
   var state={items:[],tab:'stand',c8:false,sT:false,tiersT:cpT(DEF_TIERS_T),tiers8:cpT(DEF_TIERS8),mode:'side',real:true,gap:0.5,fit:true,ruler:false,sel:null,px:DEF_PX,ms:2,mc:3,mInc:true,tiers:cpT(DEF_TIERS),tiersS:cpT(DEF_TIERS_S)};
   function cpT(a){return a.map(function(t){return {mm:+t.mm||0,p:+t.p||0,est:!!t.est}})}
   function tl(k){return k==='S'?state.tiersS:k==='T'?state.tiersT:k==='8'?state.tiers8:state.tiers}
@@ -421,7 +421,7 @@ h2{font-size:14px;margin:22px 0 10px;display:flex;align-items:center;gap:10px;ju
       var BADT={320:7400,360:7800,380:8200,400:8500};
       if(d.tiersT&&d.tiersT.length)state.tiersT=cpT(d.tiersT).map(function(t){if(t.p&&BADT[t.mm]!==t.p)return t;var n=DEF_TIERS_T.filter(function(x){return x.mm===t.mm})[0];return n?{mm:n.mm,p:n.p}:t});
       state.sT=d.sT===true;
-      if(d.tiers8&&d.tiers8.some(function(t){return t.p>0}))state.tiers8=cpT(d.tiers8); /* 전부 빈 예전 값은 기본 단가로 */
+      if(d.tiers8&&d.tiers8.some(function(t){return t.p>0}))state.tiers8=cpT(d.tiers8).map(function(t){if(t.p)return t;var n=DEF_TIERS8.filter(function(x){return x.mm===t.mm})[0];return n?{mm:n.mm,p:n.p}:t}); /* 빈 구간은 기본 단가로 */
       state.c8=d.c8===true;
     }
     state.sel=null; /* 처음엔 아무것도 선택하지 않음 */
